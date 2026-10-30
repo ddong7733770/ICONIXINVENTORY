@@ -111,6 +111,10 @@ a { color: inherit; }
 .nav-links { display: flex; gap: 22px; }
 .nav-links a { color: var(--text-secondary); font-size: 13px; font-weight: 550; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 21px 0 19px; border-bottom: 2px solid transparent; }
 .nav-links a:hover, .nav-links a.active { color: #000; border-bottom-color: #000; }
+.nav-ext { display: inline-flex; align-items: center; gap: 5px; height: 30px; margin-left: -6px; padding: 0 12px; border: 1px solid #000; background: #fff; color: #000; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out); }
+.nav-ext:hover { background: #000; color: #fff; }
+.nav-ext span { font-size: 11px; }
+@media (max-width: 520px) { .nav-ext { padding: 0 7px; font-size: 11px; margin-left: 0; } .nav-ext .ext-long { display: none; } .topnav-inner { gap: 8px !important; } .brand-mark { width: 28px; } .nav-right .btn-sm { padding: 0 8px; } }
 .nav-links a.nav-red { color: var(--hc-red); }
 .nav-links a.nav-red:hover, .nav-links a.nav-red.active { color: var(--hc-red); border-bottom-color: var(--hc-red); }
 .nav-links a.nav-red .nav-count { background: var(--hc-red); }
@@ -561,6 +565,7 @@ a { color: inherit; }
       <a href="#sec-row4" class="nav-red">품목관리 <span class="nav-count" id="navSkuCount">-</span></a>
       <a href="#sec-criteria">분류 기준</a>
     </div>
+    <a class="nav-ext" href="https://sales-inventory-management-1.onrender.com/" target="_blank" rel="noopener noreferrer" title="새 창에서 열기">누적 데이터<span class="ext-long"> 확인하기</span> <span aria-hidden="true">↗</span></a>
     <div class="nav-right">
       <span id="envStatusPill" class="status-pill">연결 확인 중</span>
       <button type="button" class="btn btn-sm" id="btnSiderCompare" title="비교할 엑셀 파일 불러오기">비교<span class="lbl">분석 파일</span></button>
