@@ -451,6 +451,7 @@ a { color: inherit; }
 .chat-img { display: block; max-width: 220px; max-height: 220px; border: 1px solid var(--border-default); background: #fff; cursor: zoom-in; }
 .chat-file { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; background: #fff; border: 1px solid var(--border-default); color: #000; text-decoration: none; font-size: 12px; max-width: 240px; }
 .chat-file:hover { border-color: #000; }
+.chat-temp { margin-top: 3px; font-size: 10px; color: var(--text-tertiary); }
 .chat-file b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .chat-file small { color: var(--text-tertiary); white-space: nowrap; }
 .chat-status { padding: 6px 14px; font-size: 11px; color: var(--hc-red); background: #FFF5F5; border-top: 1px solid #FFE5E5; }
@@ -561,6 +562,7 @@ a { color: inherit; }
       <span id="envStatusPill" class="status-pill">연결 확인 중</span>
       <button type="button" class="btn btn-sm" id="btnSiderCompare" title="비교할 엑셀 파일 불러오기">비교<span class="lbl">분석 파일</span></button>
       <label for="fileInput" class="btn btn-sm btn-primary" style="margin:0;">기준 파일 선택</label>
+      <a href="/logout" class="btn btn-sm btn-ghost" id="btnLogout" style="display:none;">로그아웃</a>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsb" style="display:none;" />
       <input type="file" id="compareFileInput" accept=".xlsx,.xls,.xlsb" style="display:none;" />
     </div>
@@ -1875,6 +1877,7 @@ async function fetchExcelFromServer() {
   const pill = document.getElementById('envStatusPill');
   try {
     const res = await fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (res.status === 401) { location.href = '/login'; return; }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buf = await res.arrayBuffer();
     pill.className = 'status-pill live'; pill.textContent = 'LIVE · 매일 00:00 갱신';
@@ -2509,7 +2512,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (m.file) {
       body = m.file.isImage
         ? `<a href="${esc(m.file.url)}" target="_blank" rel="noopener"><img class="chat-img" src="${esc(m.file.url)}" alt="${esc(m.file.name)}" loading="lazy"></a>`
-        : `<a class="chat-file" href="${esc(m.file.url)}" download="${esc(m.file.name)}"><span>📎</span><b>${esc(m.file.name)}</b><small>${fmtSize(m.file.size)}</small></a>`;
+        : `<a class="chat-file" href="${esc(m.file.url)}" download="${esc(m.file.name)}"><span>📎</span><b>${esc(m.file.name)}</b><small>${fmtSize(m.file.size)}${m.file.temp ? ' · 임시' : ''}</small></a>${m.file.temp ? '<div class="chat-temp">서버 재시작 시 삭제될 수 있는 임시 파일입니다</div>' : ''}`;
     }
     if (m.text) body += `<div class="bubble"${m.file ? ' style="margin-top:4px;"' : ''}>${esc(m.text)}</div>`;
     const del = me ? `<button type="button" class="chat-del" data-del="${m.id}" title="삭제" aria-label="메시지 삭제">×</button>` : '';
@@ -2613,15 +2616,33 @@ window.addEventListener('DOMContentLoaded', () => {
     else { th.style.backgroundImage = ''; th.textContent = (file.name.split('.').pop() || 'FILE').slice(0, 4).toUpperCase(); }
   }
   function clearPending() { C.pending = null; $('chatPending').hidden = true; $('chatFileInput').value = ''; }
+  /* 이미지는 업로드 전에 자동 축소 (긴 변 1600px · JPEG) — DB 용량 절약 */
+  const RESIZABLE = /^image\/(png|jpeg|webp|bmp)$/i;
+  async function prepareUpload(f) {
+    if (!RESIZABLE.test(f.type)) return { data: await f.arrayBuffer(), type: f.type, size: f.size };
+    try {
+      const bmp = await createImageBitmap(f);
+      const MAX = 1600, scale = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
+      if (scale === 1 && f.size <= 400 * 1024 && f.type !== 'image/bmp') return { data: await f.arrayBuffer(), type: f.type, size: f.size };
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(bmp.width * scale); cv.height = Math.round(bmp.height * scale);
+      const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.84));
+      if (!blob) throw new Error('resize failed');
+      return { data: await blob.arrayBuffer(), type: 'image/jpeg', size: blob.size };
+    } catch (e) {
+      return { data: await f.arrayBuffer(), type: f.type, size: f.size };
+    }
+  }
   async function uploadPending() {
     if (!C.pending || !C.connected || C.sending) return;
     if (!C.nick) { $('chatNick').hidden = false; return; }
     const f = C.pending;
     C.sending = true; $('chatPendingUpload').disabled = true; $('chatPendingUpload').textContent = '업로드 중';
     try {
-      const data = await f.arrayBuffer();
+      const { data, type, size } = await prepareUpload(f);
       const text = $('chatInput').value.trim();
-      C.socket.timeout(60000).emit('file', { name: f.name, type: f.type, size: f.size, data, text, nick: C.nick, clientId: C.clientId }, (err, res) => {
+      C.socket.timeout(60000).emit('file', { name: f.name, type, size, data, text, nick: C.nick, clientId: C.clientId }, (err, res) => {
         C.sending = false; $('chatPendingUpload').disabled = false; $('chatPendingUpload').textContent = '업로드';
         if (err || !res || !res.ok) { setStatus((res && res.error) || '파일 업로드에 실패했습니다.'); return; }
         clearPending(); $('chatInput').value = '';
@@ -2656,7 +2677,7 @@ window.addEventListener('DOMContentLoaded', () => {
       });
       sock.on('connect', () => { C.connected = true; setStatus(''); setOnline(); });
       sock.on('disconnect', () => { C.connected = false; setOnline(); setStatus('연결이 끊어졌습니다. 다시 연결하는 중…'); });
-      sock.on('connect_error', () => { C.connected = false; setOnline(); setStatus('채팅 서버에 연결할 수 없습니다.'); });
+      sock.on('connect_error', err => { C.connected = false; setOnline(); setStatus(err && err.message === 'unauthorized' ? '로그인이 만료되었습니다. 페이지를 새로고침해 주세요.' : '채팅 서버에 연결할 수 없습니다.'); });
       sock.on('full', max => { C.connected = false; setOnline(); setStatus(`동시 접속 인원(${max}명)이 가득 찼습니다. 잠시 후 다시 시도해 주세요.`); });
       sock.on('online', n => { C.online = n; setOnline(); });
       sock.on('history', list => {
@@ -2703,6 +2724,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   setOnline();
   connect();
+  // 접속 비밀번호를 쓰는 경우에만 로그아웃 버튼 표시
+  if (/^https?:$/.test(location.protocol)) fetch('/api/session', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.passwordEnabled) $('btnLogout').style.display = ''; }).catch(() => {});
 })();
 </script>
 </body>
