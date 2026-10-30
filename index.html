@@ -1,0 +1,2444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>아이코닉스 영업본부 재고자산 현황 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ==========================================================================
+   Design Tokens — Hyundai Card style (mono · sharp · flat)
+   ========================================================================== */
+:root {
+  --hc-black: #000000;
+  --hc-red: #DA0011;
+
+  --color-neutral-0: #FFFFFF; --color-neutral-50: #FAFAFA;
+  --color-neutral-100: #F5F5F5; --color-neutral-200: #F0F0F0;
+  --color-neutral-300: #E0E0E0; --color-neutral-500: #C7C7C7;
+  --color-neutral-700: #888888; --color-neutral-800: #555555;
+  --color-neutral-900: #191919;
+
+  --color-error-bg: #FFE5E5; --color-error-fg: #DA0011;
+  --color-info-fg: #2563EB;
+
+  --bg-base: #FFFFFF; --bg-subtle: #F5F5F5; --bg-overlay: rgba(0,0,0,.5);
+  --text-primary: #000; --text-secondary: #555; --text-tertiary: #888;
+  --text-on-primary: #FFF; --text-disabled: #C7C7C7;
+  --border-default: #E0E0E0; --border-subtle: #F0F0F0; --border-strong: #C7C7C7; --border-focus: #000;
+
+  --grade-normal: #C8EBCC; --grade-slow: #F3AF70; --grade-dead: #DA0011;
+
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px;
+  --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px;
+
+  --radius-none: 0; --radius-lg: 2px; --radius-card: 10px;
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08); --shadow-lg: 0 8px 24px rgba(0,0,0,.16);
+
+  --duration-fast: 100ms; --duration-base: 250ms;
+  --ease-out: cubic-bezier(.4,0,.2,1);
+
+  --font: 'Youandi New','Hyundai Card Youandi',Pretendard,"Pretendard Variable",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",'Segoe UI',sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+b, strong { font-weight: 600; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  margin: 0; min-width: 360px;
+  font-family: var(--font); font-size: 13px; font-weight: 400; line-height: 1.5;
+  color: var(--text-primary); background: var(--bg-base);
+  letter-spacing: -0.01em; -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; letter-spacing: inherit; }
+a { color: inherit; }
+
+/* ==========================================================================
+   Buttons / Inputs / Tags
+   ========================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 36px; padding: 0 16px; border-radius: 0; border: 1px solid #000;
+  background: #fff; color: #000; font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+}
+.btn:hover { background: var(--bg-subtle); }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: #000; color: #fff; border-color: #000; }
+.btn-primary:hover { background: #262626; }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--bg-subtle); }
+.btn-sm { height: 30px; padding: 0 12px; font-size: 11px; }
+.btn:disabled { background: #E0E0E0; border-color: #E0E0E0; color: #888; cursor: not-allowed; transform: none; }
+.btn-danger-line { color: var(--hc-red); border-color: var(--hc-red); }
+
+.input, .select {
+  height: 36px; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0;
+  background: transparent; padding: 0 2px; font-size: 13px; font-weight: 500; outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+.input:focus, .select:focus { border-bottom-color: #000; }
+.input::placeholder { color: var(--text-tertiary); font-weight: 400; }
+.select { padding-right: 22px; cursor: pointer; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #000 50%), linear-gradient(135deg, #000 50%, transparent 50%);
+  background-position: calc(100% - 9px) 16px, calc(100% - 5px) 16px; background-size: 4px 4px; background-repeat: no-repeat; }
+
+.tag { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 0; font-size: 10px; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+.tag-solid { background: #000; color: #fff; }
+.tag-subtle { background: var(--bg-subtle); color: #000; }
+.tag-outline { border: 1px solid #000; color: #000; }
+.tag-red { background: var(--hc-red); color: #fff; }
+.tag-slow { background: var(--grade-slow); color: #000; }
+.tag-normal { background: var(--grade-normal); color: #000; }
+.tag-red-line { border: 1px solid var(--hc-red); color: var(--hc-red); }
+.tag-muted { color: var(--text-tertiary); border: 1px solid var(--border-default); }
+
+.code-badge { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+
+/* ==========================================================================
+   Top Navigation
+   ========================================================================== */
+.topnav { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border-subtle); }
+.topnav-inner { max-width: 1280px; margin: 0 auto; min-height: 64px; padding: 0 32px; display: flex; align-items: center; gap: 28px; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 17px; letter-spacing: -.055em; white-space: nowrap; text-decoration: none; }
+.brand-mark { width: 33px; height: 21px; background: #000; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 0 7px; }
+.brand-mark i { display: block; height: 2px; background: #fff; }
+.brand small { font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--text-tertiary); margin-left: 2px; }
+.nav-links { display: flex; gap: 22px; }
+.nav-links a { color: var(--text-secondary); font-size: 13px; font-weight: 550; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 21px 0 19px; border-bottom: 2px solid transparent; }
+.nav-links a:hover, .nav-links a.active { color: #000; border-bottom-color: #000; }
+.nav-count { font-size: 10px; font-weight: 700; background: #000; color: #fff; padding: 1px 5px; }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+.status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.status-pill::before { content: ""; width: 7px; height: 7px; background: var(--border-strong); }
+.status-pill.live::before { background: #1AAD5C; }
+.status-pill.error::before { background: var(--hc-red); }
+.status-pill.file::before { background: #000; }
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+.main { max-width: 1280px; margin: 0 auto; padding: 48px 32px 80px; }
+.section { margin-top: 64px; }
+.section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 2px solid #000; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.eyebrow::before { content: ""; width: 24px; height: 3px; background: #000; }
+.section-head h2 { margin: 10px 0 0; font-size: 22px; font-weight: 600; line-height: 1.27; letter-spacing: -.03em; }
+.section-head p { margin: 4px 0 0; color: var(--text-tertiary); font-size: 12px; }
+
+/* ---------- Hero ---------- */
+.hero { display: grid; grid-template-columns: minmax(0,1fr) minmax(360px,.78fr); gap: 64px; align-items: center; }
+.hero-copy h1 { margin: 20px 0 18px; font-size: clamp(44px, 6.4vw, 80px); font-weight: 200; line-height: 1.02; letter-spacing: -.06em; }
+.hero-copy h1 b { font-weight: 600; }
+.hero-copy p { max-width: 520px; margin: 0; color: var(--text-secondary); font-size: 15px; line-height: 1.7; letter-spacing: -.02em; }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; }
+.page-head h1 { margin: 12px 0 0; font-size: 36px; font-weight: 200; line-height: 1.2; letter-spacing: -.04em; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 0; font-size: 12px; color: var(--text-secondary); }
+.hero-meta strong { color: #000; font-weight: 700; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.hero-cta .btn { height: 48px; padding: 0 22px; font-size: 13px; }
+
+.account { background: var(--bg-subtle); padding: 28px; border-top: 5px solid #000; min-width: 0; }
+.account-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.label { color: var(--text-tertiary); font-size: 11px; font-weight: 650; letter-spacing: .05em; }
+.amount { margin-top: 6px; font-size: 38px; font-weight: 550; line-height: 1; letter-spacing: -.065em; }
+.amount small { margin-left: 3px; font-size: 16px; font-weight: 550; letter-spacing: -.03em; }
+.account-date { padding-top: 3px; color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+
+.plate {
+  margin-top: 22px; width: 100%; aspect-ratio: 1.585; padding: 22px 24px;
+  background: #000; color: #fff; border-radius: var(--radius-card);
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+}
+.plate::after { content: ""; position: absolute; right: -40px; top: -40px; width: 58%; height: 140%; background: #191919; transform: skewX(-18deg); pointer-events: none; }
+.plate-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
+.plate-main { position: relative; z-index: 1; }
+.plate-main .num { font-size: 46px; font-weight: 200; line-height: 1; letter-spacing: -.06em; }
+.plate-main .num small { font-size: 18px; font-weight: 500; margin-left: 2px; }
+.plate-main .sub { margin-top: 8px; font-family: ui-monospace, monospace; font-size: 12px; letter-spacing: .06em; color: #C7C7C7; }
+
+.quick { display: grid; grid-template-columns: repeat(3,1fr); margin-top: 18px; border-top: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); }
+.quick > div { padding: 12px 12px; border-right: 1px solid var(--border-default); min-width: 0; }
+.quick > div:last-child { border-right: 0; }
+.quick .q-lbl { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.quick .q-lbl i { width: 8px; height: 8px; display: inline-block; }
+.quick .q-val { margin-top: 4px; font-size: 15px; font-weight: 650; letter-spacing: -.03em; white-space: nowrap; }
+
+/* ---------- Filter bar ---------- */
+.filter-bar { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 28px; padding: 18px 0; border-top: 1px solid #000; border-bottom: 1px solid var(--border-default); }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--text-tertiary); text-transform: uppercase; }
+.segmented { display: inline-flex; border: 1px solid #000; }
+.segmented button { height: 34px; padding: 0 16px; border: 0; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; transition: background var(--duration-fast) var(--ease-out); }
+.segmented button + button { border-left: 1px solid #000; }
+.segmented button.active { background: #000; color: #fff; }
+.field-grow { flex: 1; min-width: 220px; max-width: 360px; margin-left: auto; }
+
+/* ---------- Banners / Upload ---------- */
+.alert-banner { margin-top: 24px; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--color-error-bg); color: var(--hc-red); font-weight: 600; border-left: 4px solid var(--hc-red); }
+.upload-zone { margin-top: 32px; border: 1px dashed var(--border-strong); padding: 56px 24px; text-align: center; background: var(--color-neutral-50); transition: border-color var(--duration-base) var(--ease-out), background var(--duration-base) var(--ease-out); }
+.upload-zone.dragover { border-color: #000; border-style: solid; background: var(--bg-subtle); }
+.upload-zone h3 { margin: 14px 0 8px; font-size: 22px; font-weight: 200; letter-spacing: -.03em; }
+.upload-zone p { margin: 0 auto; max-width: 620px; color: var(--text-secondary); font-size: 13px; line-height: 1.7; }
+.upload-zone .mark { width: 54px; height: 34px; margin: 0 auto; background: #000; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 0 11px; }
+.upload-zone .mark i { height: 3px; background: #fff; display: block; }
+.upload-zone .btn { margin-top: 22px; }
+
+/* ---------- Compare panel ---------- */
+.compare-panel { display: none; margin-top: 40px; border: 1px solid #000; }
+.compare-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; background: #000; color: #fff; }
+.compare-head strong { font-size: 14px; font-weight: 600; }
+.compare-head .note { font-size: 11px; color: #C7C7C7; }
+.compare-head .btn { background: transparent; color: #fff; border-color: #fff; }
+.compare-head .btn:hover { background: #262626; }
+.compare-body { padding: 18px; }
+.compare-grid { display: grid; grid-template-columns: repeat(5,1fr); border-top: 1px solid var(--border-default); border-left: 1px solid var(--border-default); }
+.compare-stat { padding: 14px; border-right: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); }
+.compare-stat .lbl { font-size: 11px; font-weight: 600; color: var(--text-tertiary); }
+.compare-stat .vals { margin-top: 6px; font-size: 13px; font-weight: 600; }
+.compare-stat .delta { margin-top: 4px; font-size: 12px; font-weight: 600; }
+.delta-plus { color: var(--hc-red); }
+.delta-minus { color: var(--color-info-fg); }
+.delta-neutral { color: var(--text-tertiary); }
+
+/* ---------- KPI grid ---------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--border-strong); border-left: 1px solid var(--border-strong); }
+.kpi { padding: 24px; border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); min-width: 0; }
+.kpi-top { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; }
+.kpi-index { color: var(--text-tertiary); font-size: 10px; letter-spacing: .08em; font-weight: 700; }
+.kpi-value { margin-top: 30px; font-size: 30px; font-weight: 550; line-height: 1.05; letter-spacing: -.055em; word-break: keep-all; }
+.kpi-value.red { color: var(--hc-red); }
+.kpi-sub { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.kpi.emphasis { background: #000; color: #fff; }
+.kpi.emphasis .kpi-index, .kpi.emphasis .kpi-sub { color: #C7C7C7; }
+.kpi.emphasis .kpi-sub { border-top-color: #2D2D2D; }
+
+/* ---------- Panels ---------- */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong); }
+.grid-2.wide-left { grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); }
+.panel { padding: 24px; border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.panel-head h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.02em; line-height: 1.35; }
+.panel-head p { margin: 4px 0 0; font-size: 11px; color: var(--text-tertiary); line-height: 1.5; }
+.panel-index { color: var(--text-tertiary); font-size: 10px; font-weight: 700; letter-spacing: .08em; padding-top: 3px; }
+.chart-box { position: relative; width: 100%; }
+.unit-note { font-size: 11px; color: var(--text-tertiary); }
+
+/* IP info grid */
+.ip-grid { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--border-default); border-left: 1px solid var(--border-default); }
+.ip-cell { padding: 12px; border-right: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); min-width: 0; font-size: 11px; }
+.ip-cell-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
+.ip-cell-head > span:first-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ip-cell-head small { font-size: 10px; }
+.ip-chip { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border: 1px solid; vertical-align: 0; }
+.ip-cell-head small { font-weight: 500; color: var(--text-tertiary); }
+.ip-cell-amt { margin-top: 8px; font-size: 16px; font-weight: 650; letter-spacing: -.04em; }
+.ip-cell-row { margin-top: 3px; display: flex; justify-content: space-between; color: var(--text-secondary); }
+.ip-cell-desc { margin-top: 4px; color: var(--text-tertiary); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.share-bar { height: 3px; margin-top: 8px; background: var(--border-subtle); }
+.share-bar span { display: block; height: 100%; background: #000; }
+
+/* Generic tables */
+.table-wrap { width: 100%; overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th { text-align: left; padding: 10px 8px; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--text-tertiary); border-bottom: 1px solid #000; white-space: nowrap; background: #fff; }
+.tbl td { padding: 11px 8px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.tbl .num { text-align: right; white-space: nowrap; }
+.tbl tr.total td { border-top: 1px solid #000; border-bottom: 0; font-weight: 700; background: var(--bg-subtle); }
+.grade-cell { display: flex; align-items: center; gap: 8px; font-weight: 650; }
+.grade-dot { width: 8px; height: 8px; display: inline-block; flex-shrink: 0; }
+
+.summary-box { background: var(--bg-subtle); padding: 14px 16px; font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px; }
+.summary-box.danger { border-left: 3px solid var(--hc-red); }
+.summary-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; }
+.summary-row strong { color: #000; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; background: #fff; border: 1px solid var(--border-default); font-size: 11px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+.pill b { color: #000; }
+.pill i { width: 7px; height: 7px; display: inline-block; }
+.big-red { color: var(--hc-red); font-size: 18px; font-weight: 700; letter-spacing: -.03em; }
+
+/* Multi buttons */
+.sub-filter { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
+.sub-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sub-filter-title { min-width: 92px; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--text-tertiary); }
+.multi-group { display: flex; flex-wrap: wrap; gap: 4px; }
+.multi-btn { height: 26px; padding: 0 9px; border: 1px solid var(--border-default); background: #fff; font-size: 11px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all var(--duration-fast) var(--ease-out); }
+.multi-btn:hover { border-color: #000; color: #000; }
+.multi-btn.active { background: #000; border-color: #000; color: #fff; }
+.multi-btn.active-danger { background: var(--hc-red); border-color: var(--hc-red); color: #fff; }
+.multi-btn.active-warning { background: #F3AF70; border-color: #F3AF70; color: #000; }
+.multi-btn.active-success { background: #C8EBCC; border-color: #C8EBCC; color: #000; }
+
+/* SKU table */
+.toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border-default); }
+.toolbar-left, .toolbar-right { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 20px; }
+.quick-tabs { display: inline-flex; border: 1px solid #000; }
+.quick-tab { height: 34px; padding: 0 14px; border: 0; background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.quick-tab + .quick-tab { border-left: 1px solid #000; }
+.quick-tab .count { font-size: 10px; padding: 1px 5px; background: var(--bg-subtle); color: #000; }
+.quick-tab.active { background: #000; color: #fff; }
+.quick-tab.active .count { background: #fff; color: #000; }
+.quick-tab[data-qtab="DEAD_TOP50"].active { background: var(--hc-red); }
+
+.multi-dropdown { position: relative; }
+.multi-dropdown-btn { height: 36px; min-width: 150px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 0; border-bottom: 1px solid var(--border-strong); background: transparent; padding: 0 2px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.multi-dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 220px; background: #fff; border: 1px solid #000; box-shadow: var(--shadow-md); padding: 6px 0; }
+.multi-dropdown-menu.open { display: block; }
+.multi-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 12px; cursor: pointer; }
+.multi-dropdown-item:hover { background: var(--bg-subtle); }
+.multi-dropdown-item input { accent-color: #000; }
+
+.search-wrap { position: relative; width: 340px; max-width: 100%; }
+.suggest-box { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40; background: #fff; border: 1px solid #000; box-shadow: var(--shadow-md); padding: 10px; max-height: 360px; overflow-y: auto; }
+.suggest-box.open { display: block; }
+.suggest-header { font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--text-tertiary); margin: 4px 0 6px; }
+.suggest-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.suggest-chip { padding: 3px 8px; border: 1px solid var(--border-default); font-size: 11px; font-weight: 500; cursor: pointer; }
+.suggest-chip:hover { border-color: #000; background: #000; color: #fff; }
+.suggest-item { display: flex; justify-content: space-between; gap: 8px; padding: 7px 4px; border-top: 1px solid var(--border-subtle); font-size: 12px; cursor: pointer; }
+.suggest-item:hover { background: var(--bg-subtle); }
+
+.sku-table th[data-sort] { cursor: pointer; user-select: none; }
+.sku-table th[data-sort]:hover { color: #000; }
+.sku-table .sort-ind { font-size: 9px; color: #000; }
+.sku-table tbody tr:hover td { background: var(--color-neutral-50); }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 0; border-top: 1px solid #000; font-size: 12px; color: var(--text-secondary); }
+
+/* Month gauge (경과개월 슬라이더 게이지) */
+.period-btn { margin-left: auto; }
+.period-btn.on { background: #000; border-color: #000; color: #fff; }
+.gauge { margin-top: 12px; padding: 18px 22px 16px; background: #F8F9FB; border: 1px solid #EEF0F4; border-radius: 12px; }
+.month-pop .gauge { margin-top: 10px; }
+.gauge-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gauge-title { font-size: 14px; font-weight: 500; color: #333; }
+.gauge-title small { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: var(--text-tertiary); }
+.gauge-val { font-size: 22px; font-weight: 600; color: #2563EB; letter-spacing: -.02em; white-space: nowrap; transition: color var(--duration-base) var(--ease-out); }
+.gauge-track-wrap { position: relative; height: 22px; margin: 18px 9px 0; }
+.gauge-track { position: absolute; left: 0; right: 0; top: 7px; height: 8px; border-radius: 999px; background: #DFE5EF; overflow: hidden; }
+.gauge-over-zone { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, transparent 0 3px, rgba(37,99,235,.08) 3px 6px); }
+.gauge-fill { position: absolute; top: 7px; height: 8px; border-radius: 999px; background: #2563EB; transition: left 160ms var(--ease-out), width 160ms var(--ease-out); }
+.gauge-track-wrap.dragging .gauge-fill { transition: none; }
+.gauge-range { position: absolute; left: -9px; right: -9px; width: calc(100% + 18px); top: 0; height: 22px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+.gauge-range::-webkit-slider-runnable-track { background: none; height: 22px; }
+.gauge-range::-moz-range-track { background: none; height: 22px; }
+.gauge-range::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; background: #2563EB; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(37,99,235,.45); cursor: grab; transition: transform var(--duration-fast) var(--ease-out); }
+.gauge-range::-moz-range-thumb { pointer-events: auto; width: 12px; height: 12px; border-radius: 50%; background: #2563EB; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(37,99,235,.45); cursor: grab; }
+.gauge-range:active::-webkit-slider-thumb { transform: scale(1.15); cursor: grabbing; }
+.gauge-range:focus-visible::-webkit-slider-thumb { outline: 2px solid #000; outline-offset: 2px; }
+.gauge-scale { position: relative; height: 16px; margin: 6px 9px 0; font-size: 10px; color: var(--text-tertiary); }
+.gauge-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.gauge-scale span.over { color: #2563EB; font-weight: 500; }
+.gauge-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.gauge-reset { border: 0; background: none; padding: 0; font-size: 11px; font-weight: 500; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.month-pop { position: absolute; z-index: 60; width: min(560px, calc(100vw - 32px)); background: #fff; border: 1px solid #000; box-shadow: var(--shadow-md); padding: 6px 16px 14px; display: none; }
+.month-pop.open { display: block; }
+.th-gauge { cursor: pointer; user-select: none; }
+.th-gauge:hover, .th-gauge.on { color: #000; }
+.th-gauge .flt { display: inline-block; margin-left: 4px; padding: 0 4px; background: #000; color: #fff; font-size: 9px; letter-spacing: 0; }
+
+/* 소진계획 */
+.plan-th { white-space: nowrap; }
+.plan-sort { display: inline-flex; margin-left: 6px; border: 1px solid var(--border-default); vertical-align: middle; }
+.plan-sort button { height: 20px; padding: 0 5px; border: 0; background: #fff; font-size: 9.5px; font-weight: 500; color: var(--text-tertiary); cursor: pointer; letter-spacing: 0; }
+.plan-sort button + button { border-left: 1px solid var(--border-default); }
+.plan-sort button:hover { color: #000; }
+.plan-sort button.on { background: var(--hc-red); color: #fff; }
+.plan-group { display: inline-flex; border: 1px solid var(--border-default); }
+.plan-btn { height: 24px; padding: 0 5px; border: 0; background: #fff; font-size: 10px; font-weight: 500; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+.plan-btn + .plan-btn { border-left: 1px solid var(--border-default); }
+.plan-btn:hover { background: var(--bg-subtle); color: #000; }
+.plan-btn.has { background: #000; color: #fff; }
+.plan-btn.editing { box-shadow: inset 0 0 0 2px var(--hc-red); }
+.plan-pop { position: absolute; z-index: 70; width: 320px; max-width: calc(100vw - 24px); background: #fff; border: 1px solid #000; box-shadow: var(--shadow-lg); padding: 16px; display: none; }
+.plan-pop.open { display: block; }
+.plan-pop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.plan-pop-team { color: var(--hc-red); font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.plan-pop-item { margin-top: 2px; font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+.plan-pop-close { border: 0; background: none; font-size: 16px; line-height: 1; padding: 2px 4px; cursor: pointer; color: #000; }
+.plan-pop textarea { width: 100%; height: 96px; margin-top: 12px; resize: none; border: 0; border-bottom: 1px solid var(--border-strong); padding: 6px 0; font: inherit; font-size: 13px; outline: none; }
+.plan-pop textarea:focus { border-bottom-color: #000; }
+.plan-pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.plan-pop-count { font-size: 11px; color: var(--text-tertiary); }
+
+/* ==========================================================================
+   톡! 해요 — 채팅
+   ========================================================================== */
+.chat-fab { position: fixed; right: 24px; bottom: 24px; z-index: 90; height: 52px; padding: 0 20px 0 16px; display: inline-flex; align-items: center; gap: 8px; border: 0; background: #000; color: #fff; font-size: 14px; font-weight: 600; letter-spacing: -.02em; cursor: pointer; box-shadow: var(--shadow-lg); transition: transform var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out); }
+.chat-fab:hover { background: #262626; }
+.chat-fab:active { transform: translateY(1px); }
+.chat-fab svg { width: 20px; height: 20px; }
+.chat-unread { position: absolute; top: -12px; right: -8px; display: inline-flex; align-items: center; gap: 3px; height: 24px; padding: 0 8px 0 6px; background: var(--hc-red); color: #fff; font-size: 11px; font-weight: 600; box-shadow: 0 2px 6px rgba(218,0,17,.4); animation: chatPop 260ms var(--ease-out); }
+.chat-unread svg { width: 14px; height: 14px; }
+.chat-unread[hidden] { display: none; }
+@keyframes chatPop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.chat-panel { position: fixed; right: 24px; bottom: 24px; z-index: 95; width: 380px; max-width: calc(100vw - 24px); height: min(620px, calc(100vh - 48px)); display: flex; flex-direction: column; background: #fff; border: 1px solid #000; box-shadow: var(--shadow-xl, 0 16px 32px rgba(0,0,0,.24)); transform: translateY(calc(100% + 40px)); opacity: 0; visibility: hidden; transition: transform 320ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s linear 320ms; }
+.chat-panel.open { transform: none; opacity: 1; visibility: visible; transition: transform 320ms var(--ease-out), opacity 200ms var(--ease-out), visibility 0s; }
+.chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; background: #000; color: #fff; }
+.chat-head .t { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.chat-head .s { margin-top: 2px; font-size: 11px; color: #C7C7C7; display: flex; align-items: center; gap: 6px; }
+.chat-head .s i { width: 7px; height: 7px; background: #888; display: inline-block; }
+.chat-head .s i.on { background: #1AAD5C; }
+.chat-close { border: 0; background: none; color: #fff; font-size: 18px; line-height: 1; cursor: pointer; padding: 4px; }
+.chat-list { flex: 1; overflow-y: auto; padding: 14px 14px 6px; background: #FAFAFA; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+.chat-empty { margin: auto; text-align: center; color: var(--text-tertiary); font-size: 12px; line-height: 1.7; }
+.chat-day { align-self: center; font-size: 10.5px; color: var(--text-tertiary); padding: 2px 10px; background: #F0F0F0; }
+.chat-divider { display: flex; align-items: center; gap: 8px; font-size: 10.5px; font-weight: 600; color: var(--hc-red); }
+.chat-divider::before, .chat-divider::after { content: ""; flex: 1; height: 1px; background: var(--hc-red); opacity: .5; }
+.chat-msg { display: flex; flex-direction: column; align-items: flex-start; max-width: 82%; }
+.chat-msg.me { align-self: flex-end; align-items: flex-end; }
+.chat-msg .who { font-size: 11px; font-weight: 600; color: #000; margin-bottom: 3px; }
+.chat-msg .row { display: flex; align-items: flex-end; gap: 6px; }
+.chat-msg.me .row { flex-direction: row-reverse; }
+.chat-msg .bubble { padding: 8px 11px; background: #fff; border: 1px solid var(--border-default); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.chat-msg.me .bubble { background: #000; border-color: #000; color: #fff; }
+.chat-msg .time { font-size: 10px; color: var(--text-tertiary); white-space: nowrap; }
+.chat-img { display: block; max-width: 220px; max-height: 220px; border: 1px solid var(--border-default); background: #fff; cursor: zoom-in; }
+.chat-file { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; background: #fff; border: 1px solid var(--border-default); color: #000; text-decoration: none; font-size: 12px; max-width: 240px; }
+.chat-file:hover { border-color: #000; }
+.chat-file b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.chat-file small { color: var(--text-tertiary); white-space: nowrap; }
+.chat-status { padding: 6px 14px; font-size: 11px; color: var(--hc-red); background: #FFF5F5; border-top: 1px solid #FFE5E5; }
+.chat-status[hidden] { display: none; }
+.chat-pending { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--border-default); background: #fff; }
+.chat-pending[hidden] { display: none; }
+.chat-pending .thumb { width: 44px; height: 44px; flex-shrink: 0; background: #F0F0F0 center/cover no-repeat; display: grid; place-items: center; font-size: 10px; font-weight: 600; color: var(--text-secondary); }
+.chat-pending .info { flex: 1; min-width: 0; font-size: 12px; }
+.chat-pending .info b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-pending .info small { color: var(--text-tertiary); }
+.chat-foot { display: flex; align-items: flex-end; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--border-default); background: #fff; }
+.chat-attach { width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--border-default); background: #fff; cursor: pointer; display: grid; place-items: center; }
+.chat-attach:hover { border-color: #000; }
+.chat-attach svg { width: 18px; height: 18px; }
+.chat-input { flex: 1; min-height: 36px; max-height: 96px; resize: none; border: 0; border-bottom: 1px solid var(--border-strong); padding: 8px 2px; font: inherit; font-size: 13px; outline: none; }
+.chat-input:focus { border-bottom-color: #000; }
+.chat-send { height: 36px; padding: 0 14px; border: 0; background: #000; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+.chat-send:disabled { background: #E0E0E0; color: #888; cursor: not-allowed; }
+.chat-nick { position: absolute; inset: 0; z-index: 2; background: rgba(255,255,255,.97); display: flex; flex-direction: column; justify-content: center; padding: 32px; }
+.chat-nick[hidden] { display: none; }
+.chat-nick h4 { margin: 0 0 6px; font-size: 22px; font-weight: 200; letter-spacing: -.03em; }
+.chat-nick p { margin: 0 0 20px; font-size: 12px; color: var(--text-tertiary); }
+.chat-nick .btn { margin-top: 16px; height: 44px; }
+@media (max-width: 520px) {
+  .chat-panel { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 85vh; }
+  .chat-fab { right: 16px; bottom: 16px; }
+}
+
+/* Criteria section */
+.criteria-grid { display: grid; grid-template-columns: repeat(3,1fr); border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong); }
+.criteria-card { padding: 24px; border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); font-size: 12px; line-height: 1.75; color: var(--text-secondary); }
+.criteria-card h4 { margin: 0 0 14px; font-size: 13px; font-weight: 700; color: #000; display: flex; justify-content: space-between; }
+.criteria-card h4 span { color: var(--text-tertiary); font-size: 10px; letter-spacing: .08em; }
+.criteria-card b { color: #000; }
+.link-btn { border: 0; background: none; padding: 0; font-weight: 700; color: #000; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+/* Toast */
+.toast { position: fixed; right: 24px; bottom: 92px; z-index: 80; width: 360px; max-width: calc(100vw - 32px); background: #000; color: #fff; padding: 20px; box-shadow: var(--shadow-lg); transform: translateY(16px); opacity: 0; pointer-events: none; transition: all var(--duration-base) var(--ease-out); }
+.toast.show { transform: none; opacity: 1; pointer-events: auto; }
+.toast-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+.toast-close { position: absolute; right: 12px; top: 10px; border: 0; background: none; color: #fff; font-size: 16px; cursor: pointer; }
+.toast .formula { padding: 8px 10px; border: 1px solid #555; font-size: 12px; font-weight: 600; text-align: center; margin-bottom: 10px; }
+.toast ul { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.6; color: #C7C7C7; }
+.toast ul b { color: #fff; }
+.toast small { color: #888; }
+
+.footer { max-width: 1280px; margin: 0 auto; padding: 24px 32px 48px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--text-tertiary); }
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 1100px) {
+  .nav-links { display: none; }
+  .kpi-grid { grid-template-columns: repeat(2,1fr); }
+  .compare-grid { grid-template-columns: repeat(3,1fr); }
+  .grid-2, .grid-2.wide-left { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  .topnav-inner { padding: 0 16px; gap: 12px; }
+  .status-pill { display: none; }
+  .main { padding: 32px 16px 56px; }
+  .footer { padding: 20px 16px 40px; }
+  .hero { grid-template-columns: 1fr; gap: 36px; }
+  .criteria-grid { grid-template-columns: 1fr; }
+  .ip-grid { grid-template-columns: repeat(2,1fr); }
+  .field-grow { margin-left: 0; max-width: none; }
+}
+@media (max-width: 520px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .compare-grid { grid-template-columns: 1fr 1fr; }
+  .account { padding: 18px; }
+  .plate { padding: 17px; }
+  .plate-main .num { font-size: 34px; }
+  .amount { font-size: 30px; }
+  .brand small, #btnSiderCompare span.lbl { display: none; }
+  .search-wrap { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= Top Navigation ======================= -->
+<nav class="topnav" aria-label="주요 메뉴">
+  <div class="topnav-inner">
+    <a class="brand" href="#top"><span class="brand-mark"><i></i><i></i></span>ICONIX<small>INVENTORY</small></a>
+    <div class="nav-links">
+      <a href="#sec-kpi">KPI 요약</a>
+      <a href="#sec-row2">IP · 등급</a>
+      <a href="#sec-row3">품목군 · 리스크</a>
+      <a href="#sec-row4">SKU 명세 <span class="nav-count" id="navSkuCount">-</span></a>
+      <a href="#sec-criteria">분류 기준</a>
+    </div>
+    <div class="nav-right">
+      <span id="envStatusPill" class="status-pill">연결 확인 중</span>
+      <button type="button" class="btn btn-sm" id="btnSiderCompare" title="비교할 엑셀 파일 불러오기">비교<span class="lbl">분석 파일</span></button>
+      <label for="fileInput" class="btn btn-sm btn-primary" style="margin:0;">기준 파일 선택</label>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsb" style="display:none;" />
+      <input type="file" id="compareFileInput" accept=".xlsx,.xls,.xlsb" style="display:none;" />
+    </div>
+  </div>
+</nav>
+
+<main class="main" id="top">
+
+  <!-- ======================= Page Header ======================= -->
+  <header class="page-head">
+    <div>
+      <div class="eyebrow">Inventory Report · 영업본부</div>
+      <h1>재고자산 현황</h1>
+    </div>
+    <div class="hero-meta">
+      <span>조회 기간 <strong id="mainPeriodBadge">-</strong></span>
+      <span>기준일 <strong id="refDateText">-</strong></span>
+      <span id="lastUpdatedText">데이터 대기 중</span>
+    </div>
+  </header>
+
+  <!-- ======================= Global Filter ======================= -->
+  <div class="filter-bar">
+    <div class="field">
+      <span class="field-label">조회 기준</span>
+      <div class="segmented" id="segScope">
+        <button type="button" data-val="sales" class="active">영업본부</button>
+        <button type="button" data-val="company">전사 합계</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">IP</span>
+      <select id="selGlobalIp" class="select" style="min-width:170px;">
+        <option value="ALL">전체 IP</option>
+        <option value="뽀로로">뽀로로</option>
+        <option value="타요">타요</option>
+        <option value="잔망루피">잔망루피</option>
+        <option value="데코데코">데코데코</option>
+        <option value="해치">해치</option>
+        <option value="퍼글러">퍼글러</option>
+        <option value="기타(나머지)">기타(나머지)</option>
+      </select>
+    </div>
+    <div class="field field-grow">
+      <span class="field-label">전체 필터 검색</span>
+      <input type="search" id="inpGlobalSearch" class="input" placeholder="품목코드 · 품목명" />
+    </div>
+    <button type="button" id="btnResetFilters" class="btn btn-sm">전체 초기화</button>
+  </div>
+
+  <div id="dropZoneContainer" style="display:none;">
+    <div id="dropZone" class="upload-zone">
+      <div class="mark"><i></i><i></i></div>
+      <h3 id="dropZoneTitle">데이터 파일(data.xlsx)을 불러와주세요</h3>
+      <p id="dropZoneDesc">우측 상단의 버튼 또는 이 영역에 재고등급현황 작성표(.xlsx) 파일을 드래그 &amp; 드롭하세요.</p>
+      <label for="fileInput" class="btn btn-primary">파일 선택</label>
+    </div>
+  </div>
+
+  <div id="errorBanner" class="alert-banner" style="display:none;"><span id="errorBannerMsg">데이터를 불러오는 중 오류가 발생했습니다.</span></div>
+
+  <!-- ======================= Compare Panel ======================= -->
+  <section id="secComparePanel" class="compare-panel" aria-label="기간 비교분석 결과">
+    <div class="compare-head">
+      <div>
+        <strong id="compHeaderTitle">비교 파일 vs 현재 기준 데이터</strong>
+        <div class="note" id="compMappingNote"></div>
+        <div class="note" id="siderCompareDesc" style="display:none;"></div>
+        <span id="siderCompareStatusBadge" style="display:none;">대기 중</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="btn btn-sm" id="btnReuploadCompare">다른 비교파일</button>
+        <button type="button" class="btn btn-sm" id="btnCloseComparePanel">비교 닫기</button>
+        <button type="button" id="btnSiderCompareClear" style="display:none;"></button>
+      </div>
+    </div>
+    <div class="compare-body">
+      <div class="compare-grid" id="compareSummaryGrid"></div>
+      <div class="table-wrap" style="margin-top:16px;"><table class="tbl" id="compareIpTable"></table></div>
+    </div>
+  </section>
+
+  <!-- ======================= KPI ======================= -->
+  <section class="section" id="sec-kpi" aria-label="핵심 KPI 요약">
+    <div class="section-head">
+      <div><div class="eyebrow">01 · Key Metrics</div><h2>핵심 지표</h2><p>조회 기준(영업본부/전사)과 IP·검색 필터가 반영된 재고 요약</p></div>
+    </div>
+    <div class="kpi-grid">
+      <article class="kpi emphasis">
+        <div class="kpi-top"><span id="kpi1Title">영업본부 총재고금액</span><span class="kpi-index">01</span></div>
+        <div class="kpi-value" id="kpi1Val">-</div>
+        <div class="kpi-sub"><span id="kpi1Sub1">전사 대비 -%</span><span id="kpi1Sub2">- SKU</span></div>
+      </article>
+      <article class="kpi">
+        <div class="kpi-top"><span id="kpi2Title">영업본부 총재고수량</span><span class="kpi-index">02</span></div>
+        <div class="kpi-value" id="kpi2Val">-</div>
+        <div class="kpi-sub"><span id="kpi2Sub1">전사 수량 대비 -%</span><span id="kpi2Sub2">보유 SKU -개</span></div>
+      </article>
+      <article class="kpi">
+        <div class="kpi-top"><span id="kpi3Title">악성 · 부진 재고금액</span><span class="kpi-index">03</span></div>
+        <div class="kpi-value red" id="kpi3Val">-</div>
+        <div class="kpi-sub"><span id="kpi3Sub1">악성 - · 부진 -</span><span id="kpi3Sub2">정상 -</span></div>
+      </article>
+      <article class="kpi">
+        <div class="kpi-top"><span>중위 회전율 · 중위 경과월</span><span class="kpi-index">04</span></div>
+        <div class="kpi-value" id="kpi4Val">-</div>
+        <div class="kpi-sub"><span id="kpi4Sub1">금액가중 평균 -회</span><span id="kpi4Sub2">평균 경과 -개월</span></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ======================= IP & Grade ======================= -->
+  <section class="section" id="sec-row2">
+    <div class="section-head">
+      <div><div class="eyebrow">02 · Composition</div><h2>IP 구성 · 재고 등급</h2><p>IP별 재고 구성과 실질 재고등급(BJ열) 요약</p></div>
+    </div>
+    <div class="grid-2 wide-left">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h3>IP별 재고 구성</h3><p>품목명 키워드 → 캐릭터·라인 키워드 → 품목코드 앞 2자리 순으로 분류</p></div>
+          <span class="panel-index">A</span>
+        </div>
+        <div class="chart-box" style="height:240px;"><canvas id="chartIpComposition"></canvas></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;font-weight:700;">IP별 상세</span>
+          <span class="unit-note">단위 백만원 · 만개 · 비중(%) · 종 = 재고 보유 SKU</span>
+        </div>
+        <div class="ip-grid" id="ipSummaryGrid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div><h3 id="gradeSummaryTitle">재고 등급별 종합 요약</h3><p id="gradeSummaryDesc">-</p></div>
+          <span class="tag tag-solid" id="gradeSummaryBadge">- SKU</span>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl" aria-label="재고 등급별 종합 요약 표">
+            <thead><tr><th>재고 등급 (BJ)</th><th class="num">품목수</th><th class="num">수량 (개)</th><th class="num">금액</th><th class="num">비중</th></tr></thead>
+            <tbody id="gradeSummaryTableBody"></tbody>
+          </table>
+        </div>
+        <div class="summary-box danger" id="gradeSummaryDiffGrid" style="margin-top:auto;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= Prefix & Risk ======================= -->
+  <section class="section" id="sec-row3">
+    <div class="section-head">
+      <div><div class="eyebrow">03 · Risk</div><h2>품목군 · 체화 리스크</h2><p>품목군(코드 앞 3자리) Top 10과 입고 경과기간 × 회전율 매트릭스</p></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h3 id="leftTabTitle">품목군별 재고금액 · 등급 비중 Top 10</h3><p>코드 분류(3·4번째 자리)와 IP 복수선택</p></div>
+          <span class="panel-index">B</span>
+        </div>
+        <div class="sub-filter">
+          <div class="sub-filter-row">
+            <span class="sub-filter-title">품목코드 3·4번째</span>
+            <div class="multi-group" id="c5MidGroup">
+              <button type="button" class="multi-btn active" data-val="ALL">전체</button>
+              <button type="button" class="multi-btn" data-val="T1">T1 완구</button>
+              <button type="button" class="multi-btn" data-val="P1">P1 출판</button>
+              <button type="button" class="multi-btn" data-val="T2">T2 수입완구</button>
+              <button type="button" class="multi-btn" data-val="L1">L1 굿즈</button>
+              <button type="button" class="multi-btn" data-val="기타">기타</button>
+            </div>
+          </div>
+          <div class="sub-filter-row">
+            <span class="sub-filter-title">IP 분류</span>
+            <div class="multi-group" id="c5IpGroup">
+              <button type="button" class="multi-btn active" data-val="ALL">전체</button>
+              <button type="button" class="multi-btn" data-val="뽀로로">뽀로로</button>
+              <button type="button" class="multi-btn" data-val="타요">타요</button>
+              <button type="button" class="multi-btn" data-val="잔망루피">잔망루피</button>
+              <button type="button" class="multi-btn" data-val="데코데코">데코데코</button>
+              <button type="button" class="multi-btn" data-val="해치">해치</button>
+              <button type="button" class="multi-btn" data-val="퍼글러">퍼글러</button>
+              <button type="button" class="multi-btn" data-val="기타(나머지)">기타</button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-box" style="height:300px;"><canvas id="chartTopPrefix"></canvas></div>
+        <div class="summary-box" id="chart5AnalysisBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div><h3>입고 경과기간(BL) × 재고회전율(BI)</h3><p>재고등급 복수선택에 따른 체화 리스크 분포</p></div>
+          <span class="tag tag-subtle" id="scatterNoteBadge">상위 250개 고액 SKU</span>
+        </div>
+        <div class="sub-filter">
+          <div class="sub-filter-row">
+            <span class="sub-filter-title">재고등급</span>
+            <div class="multi-group" id="c4GradeGroup">
+              <button type="button" class="multi-btn active" data-val="ALL">전체</button>
+              <button type="button" class="multi-btn active-danger" data-val="악성">악성</button>
+              <button type="button" class="multi-btn active-warning" data-val="부진">부진</button>
+              <button type="button" class="multi-btn active-success" data-val="정상">정상</button>
+            </div>
+            <button type="button" class="multi-btn period-btn" id="btnC4Period">기간</button>
+          </div>
+          <div id="c4GaugeWrap" style="display:none;"></div>
+        </div>
+        <div class="chart-box" style="height:340px;"><canvas id="chartRiskScatter"></canvas></div>
+        <div class="summary-box danger" id="chart4DynamicBox"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= SKU Table ======================= -->
+  <section class="section" id="sec-row4">
+    <div class="section-head">
+      <div><div class="eyebrow">04 · SKU</div><h2>영업본부 중점 관리 SKU</h2><p>품목코드 · IP · 실질 재고등급 · 검색 조건별 명세</p></div>
+      <button type="button" id="btnExportCsv" class="btn btn-sm">현재 목록 CSV 다운로드</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="quick-tabs" id="tableQuickTabs">
+          <button type="button" class="quick-tab active" data-qtab="ALL">전체 품목 <span class="count" id="qCountAll">0</span></button>
+          <button type="button" class="quick-tab" data-qtab="DEAD_TOP50">악성 고액 Top 50 <span class="count" id="qCountDead50">0</span></button>
+        </div>
+        <div class="field">
+          <span class="field-label">품목코드</span>
+          <select id="selTableCodeMid" class="select">
+            <option value="ALL">전체</option>
+            <option value="T1">T1 완구</option>
+            <option value="P1">P1 출판</option>
+            <option value="L1">L1 굿즈</option>
+            <option value="T2">T2 수입완구</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">IP</span>
+          <div class="multi-dropdown" id="tableIpDropdown">
+            <button type="button" class="multi-dropdown-btn" id="btnTableIpDropdown"><b id="lblTableIpSelected">전체</b><span style="font-size:9px;">▼</span></button>
+            <div class="multi-dropdown-menu" id="menuTableIpDropdown">
+              <label class="multi-dropdown-item" style="border-bottom:1px solid var(--border-subtle);font-weight:700;"><input type="checkbox" value="ALL" checked /> 전체 선택</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="뽀로로" class="ip-chk" checked /> 뽀로로</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="타요" class="ip-chk" checked /> 타요</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="잔망루피" class="ip-chk" checked /> 잔망루피</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="데코데코" class="ip-chk" checked /> 데코데코</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="해치" class="ip-chk" checked /> 해치</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="퍼글러" class="ip-chk" checked /> 퍼글러</label>
+              <label class="multi-dropdown-item"><input type="checkbox" value="기타(나머지)" class="ip-chk" checked /> 기타(나머지)</label>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label">재고등급 (BJ)</span>
+          <div class="multi-group" id="tableGradeGroup">
+            <button type="button" class="multi-btn active" data-val="ALL">전체</button>
+            <button type="button" class="multi-btn" data-val="정상">정상</button>
+            <button type="button" class="multi-btn" data-val="부진">부진</button>
+            <button type="button" class="multi-btn" data-val="악성">악성</button>
+            <button type="button" class="multi-btn" data-val="재고없음">재고없음</button>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="field search-wrap" id="tableSearchWrap">
+          <span class="field-label">품목 검색</span>
+          <input type="search" id="inpTableSearch" class="input" style="width:100%;" placeholder="품목코드 · 품목명 (유사 키워드 추천)" autocomplete="off" />
+          <div class="suggest-box" id="tableSuggestBox"></div>
+        </div>
+        <div class="field">
+          <span class="field-label">표시</span>
+          <select id="selPageSize" class="select">
+            <option value="20" selected>20개씩</option>
+            <option value="50">50개씩</option>
+            <option value="100">100개씩</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="tbl sku-table" id="skuTable">
+        <thead>
+          <tr>
+            <th data-sort="code">품목코드 <span class="sort-ind"></span></th>
+            <th data-sort="ip">IP <span class="sort-ind"></span></th>
+            <th data-sort="name">품목명 <span class="sort-ind"></span></th>
+            <th data-sort="qty" class="num"><span id="thQtyLabel">영업본부수량</span> <span class="sort-ind"></span></th>
+            <th data-sort="unitPrice" class="num">기말단가(AL) <span class="sort-ind"></span></th>
+            <th data-sort="amt" class="num"><span id="thAmtLabel">영업본부금액</span> <span class="sort-ind">▼</span></th>
+            <th data-sort="turnover" class="num">회전율(BI) <span class="sort-ind"></span></th>
+            <th data-sort="gradeBJ">등급(BJ) <span class="sort-ind"></span></th>
+            <th id="thMonths" class="th-gauge" title="클릭하여 경과개월 범위 선택">최종입고 (경과월) <span class="sort-ind"></span><span id="thMonthsFlt"></span> <span style="font-size:9px;">▾</span></th>
+            <th class="plan-th">소진계획 <span class="plan-sort" id="planSortGroup"><button type="button" data-team="1팀">1팀</button><button type="button" data-team="2팀">2팀</button><button type="button" data-team="온라인">온라인</button><button type="button" data-team="기타">기타</button></span></th>
+          </tr>
+        </thead>
+        <tbody id="skuTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <div id="tableSummaryInfo">총 0개 품목</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button type="button" id="btnPrevPage" class="btn btn-sm">이전</button>
+        <span id="pageIndicator" style="font-weight:700;color:#000;padding:0 10px;">1 / 1</span>
+        <button type="button" id="btnNextPage" class="btn btn-sm">다음</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= Criteria ======================= -->
+  <section class="section" id="sec-criteria">
+    <div class="section-head">
+      <div><div class="eyebrow">05 · Criteria</div><h2>분류 및 산식 기준</h2><p>참고_재고분류기준 시트 및 대시보드 분류 규칙</p></div>
+    </div>
+    <div class="criteria-grid">
+      <div class="criteria-card">
+        <h4>실질 재고등급 (BJ열) <span>01</span></h4>
+        <b>재고없음</b> 기말재고 0 (결품 · 등급 집계 제외)<br>
+        <b>악성</b> 18개월 입·출고 무실적 OR (3개월 무입고 &amp; <button type="button" class="link-btn btn-turnover">회전율</button> &lt; 0.5)<br>
+        <b>정상</b> 3개월 이내 입고 OR <button type="button" class="link-btn btn-turnover">회전율</button> &gt; 1.0<br>
+        <b>부진</b> 위 조건에 해당하지 않는 재고
+      </div>
+      <div class="criteria-card">
+        <h4>IP 분류 우선순위 <span>02</span></h4>
+        <b>1단계 품목명</b> 뽀로로 → 타요 → 잔망루피(잔망) → 데코데코 → 해치 → 퍼글러 (해치멀은 기타)<br>
+        <b>2단계 캐릭터·라인</b> 포비·크롱·패티 → 뽀로로 / 베이피·벗지·베이비퍼글러·앨리캣츠·핀카 → 퍼글러<br>
+        <b>3단계 품목코드</b> PR 뽀로로 · TY 타요 · DC 데코데코 · HC 해치 · FG 퍼글러<br>
+        그 외는 <b>기타(나머지)</b>
+      </div>
+      <div class="criteria-card">
+        <h4>품목코드 · 금액 기준 <span>03</span></h4>
+        <b>코드 3·4번째</b> T1 완구 · P1 출판 · L1 굿즈 · T2 수입완구 · 그 외 기타(M·F·X·S 등)<br>
+        <b>영업본부</b> 금액 AV열 · 수량 BB열<br>
+        <b>전사 합계</b> 금액 AM열 · 수량 AK열 · 단가 AL열<br>
+        <b>회전율</b> 중위값 및 금액가중 평균 (극단값 영향 최소화)
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>ICONIX · 영업본부 재고자산 현황 대시보드</span>
+  <span>데이터: 재고자산수불부 시트 · 매일 00:00 자동 갱신</span>
+</footer>
+
+<!-- 경과개월 선택 팝오버 (SKU 표) -->
+<div class="month-pop" id="tableMonthPop">
+  <div id="tableGaugeWrap"></div>
+  <div class="gauge-foot">
+    <button type="button" class="btn btn-sm" data-msort="asc">경과월 오름차순</button>
+    <button type="button" class="btn btn-sm" data-msort="desc">경과월 내림차순</button>
+    <button type="button" class="btn btn-sm btn-primary" id="btnMonthPopClose">닫기</button>
+  </div>
+</div>
+
+<!-- 소진계획 팝업 -->
+<div class="plan-pop" id="planPop" role="dialog" aria-label="소진계획 입력">
+  <div class="plan-pop-head">
+    <div style="min-width:0;"><div class="plan-pop-team" id="planPopTeam">1팀</div><div class="plan-pop-item" id="planPopItem"></div></div>
+    <button type="button" class="plan-pop-close" id="planPopClose" aria-label="닫기">✕</button>
+  </div>
+  <textarea id="planPopText" maxlength="100" placeholder="소진계획을 입력하세요 (최대 100자)"></textarea>
+  <div class="plan-pop-foot">
+    <span class="plan-pop-count" id="planPopCount">0 / 100</span>
+    <button type="button" class="btn btn-sm btn-primary" id="planPopSave">SAVE</button>
+  </div>
+</div>
+
+<!-- Turnover toast -->
+<div id="toastTurnover" class="toast" role="status">
+  <button class="toast-close" id="toastCloseBtn" aria-label="닫기">✕</button>
+  <div class="toast-title">회전율 산식 및 기준</div>
+  <div class="formula">회전율 = 매출수량 ÷ ((기초재고 + 기말재고) ÷ 2)</div>
+  <ul>
+    <li><b>0</b> 해당 기간 매출 수량 없음</li>
+    <li><b>0.5</b> 평균재고의 50% 판매 <small>— 소진 속도 느림</small></li>
+    <li><b>1</b> 매출수량 = 평균재고수량</li>
+    <li><b>2</b> 매출수량 = 평균재고의 2배 <small>— 소진 속도 빠름</small></li>
+  </ul>
+</div>
+
+<script>
+/* ==========================================================================
+   1. 상수
+   ========================================================================== */
+const DATA_URL = './data.xlsx';
+const MAX_COLS = 100; // 수불부 시트에 8,000여 개의 빈 열이 있어 파싱 범위를 제한
+
+const IP_PRIORITY_LIST = ['뽀로로', '타요', '잔망루피', '데코데코', '해치', '퍼글러', '기타(나머지)'];
+
+/* IP 메인 컬러 → 베리에이션(strong: 테두리·텍스트용 / alt: 보조 계열) */
+const IP_BASE_COLOR = {
+  '뽀로로': '#8DC0F1', '타요': '#E0F0FE', '잔망루피': '#FFE5E5', '데코데코': '#DCF7E5',
+  '해치': '#888888', '퍼글러': '#D3A7DF', '기타(나머지)': '#555555'
+};
+function hexToRgb(h) { const n = parseInt(h.replace('#', ''), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function rgbToHex(r) { return '#' + r.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('').toUpperCase(); }
+function mixColor(h, target, t) { const a = hexToRgb(h), b = hexToRgb(target); return rgbToHex(a.map((v, i) => v + (b[i] - v) * t)); }
+function luminance(h) { const [r, g, b] = hexToRgb(h); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; }
+const IP_COLORS = {};
+Object.entries(IP_BASE_COLOR).forEach(([ip, base]) => {
+  const light = luminance(base) > 0.6;
+  IP_COLORS[ip] = {
+    base,
+    strong: light ? mixColor(base, '#000000', 0.45) : base,          // 테두리·라벨
+    alt: light ? mixColor(base, '#000000', 0.22) : mixColor(base, '#FFFFFF', 0.55), // 수량 막대 등 보조
+    text: light ? '#000000' : '#FFFFFF'
+  };
+});
+function ipColor(ip) { return IP_COLORS[ip] || IP_COLORS['기타(나머지)']; }
+function ipTag(ip) { const c = ipColor(ip); return `<span class="tag" style="background:${c.base};color:${c.text};${luminance(c.base) > 0.6 ? `box-shadow:inset 0 0 0 1px ${c.strong}33;` : ''}">${ip}</span>`; }
+
+const IP_META_DESC = {
+  '뽀로로': '대표 영유아 IP (포비·크롱·패티 포함)',
+  '타요': '모빌리티 완구·출판 주력 IP',
+  '잔망루피': 'MZ 캐릭터 굿즈·봉제 ("잔망" 통합)',
+  '데코데코': '여아 DIY·만들기·스퀴시',
+  '해치': '해치 캐릭터 완구·굿즈',
+  '퍼글러': '수입 봉제·키링 (베이비퍼글러·앨리캣츠 등)',
+  '기타(나머지)': '해치멀·기타 캐릭터·일반완구·도서'
+};
+
+const PREFIX_IP_NAME = {
+  PR: '뽀로로', TY: '타요', DC: '데코데코', HC: '해치', FG: '퍼글러', EE: '일반·수입', TP: '띠띠뽀',
+  PB: '포비빅', GP: '고냥패티', KC: '크크롱', FH: '플라워링하트', SA: '스톤에이지', EI: '기타'
+};
+const PREFIX_CAT_NAME = { T: '완구', P: '출판', L: '굿즈', M: 'MD', X: '기획·수출', S: '판촉', F: 'F&B', E: '제작·기타', O: '기타' };
+const PREFIX_OVERRIDE = { PRL: '뽀로로·잔망루피 굿즈' };
+function prefixLabel(p) {
+  if (PREFIX_OVERRIDE[p]) return `${PREFIX_OVERRIDE[p]} (${p})`;
+  const ip = PREFIX_IP_NAME[p.slice(0, 2)] || p.slice(0, 2);
+  const cat = PREFIX_CAT_NAME[p.slice(2, 3)] || '';
+  return `${ip} ${cat} (${p})`.replace(/\s+/g, ' ');
+}
+
+const MID_MAIN = ['T1', 'P1', 'L1', 'T2'];
+const MID_NAME = { T1: 'T1 완구', P1: 'P1 출판', T2: 'T2 수입완구', L1: 'L1 굿즈', '기타': '기타' };
+function midKey(it) { return MID_MAIN.includes(it.codeMid) ? it.codeMid : '기타'; }
+
+const GRADE_COLOR = { '정상': '#C8EBCC', '부진': '#F3AF70', '악성': '#DA0011', '재고없음': '#E0E0E0' };
+const STOCK_GRADES = ['정상', '부진', '악성'];
+
+const state = {
+  rawItems: [], mainPeriodLabel: '-', refDate: null, compData: null,
+  scope: 'sales', globalIp: 'ALL', globalSearch: '',
+  c5Mids: new Set(), c5Ips: new Set(), c4Grades: new Set(STOCK_GRADES),
+  quickTab: 'ALL', tableCodeMid: 'ALL', tableIps: new Set(IP_PRIORITY_LIST), tableGrades: new Set(), tableSearch: '',
+  sortKey: 'amt', sortDir: 'desc', page: 1, pageSize: 20,
+  c4Months: { lo: 1, hi: 61 }, tableMonths: { lo: 1, hi: 61 }, planTeam: null,
+  midnightTimer: null, toastTimer: null
+};
+const charts = { topPrefix: null, ipComp: null, riskScatter: null };
+
+if (window.Chart) {
+  Chart.defaults.font.family = "Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#555555';
+  Chart.defaults.borderColor = '#F0F0F0';
+  Chart.defaults.plugins.legend.labels.boxWidth = 10;
+  Chart.defaults.plugins.legend.labels.boxHeight = 10;
+  Chart.defaults.plugins.tooltip.backgroundColor = '#000';
+  Chart.defaults.plugins.tooltip.cornerRadius = 0;
+  Chart.defaults.plugins.tooltip.padding = 10;
+}
+
+/* ==========================================================================
+   2. 분류 · 포맷 유틸
+   ========================================================================== */
+const PORORO_SUB = ['포비', '크롱', '패티'];
+const PUGGLER_SUB = ['베이피', '벗지', '베이비퍼글러', '앨리캣츠', '핀카'];
+const PREFIX_IP = { PR: '뽀로로', TY: '타요', DC: '데코데코', HC: '해치', FG: '퍼글러' };
+
+function classifyIp(nameStr, code) {
+  const s = String(nameStr || '').trim();
+  if (s.includes('뽀로로')) return '뽀로로';
+  if (s.includes('타요')) return '타요';
+  if (s.includes('잔망')) return '잔망루피';
+  if (s.includes('데코데코')) return '데코데코';
+  if (s.includes('해치멀')) return '기타(나머지)'; // 해치멀은 기타로 분류
+  if (s.includes('해치')) return '해치';
+  if (s.includes('퍼글러')) return '퍼글러';
+  if (PORORO_SUB.some(k => s.includes(k))) return '뽀로로';
+  if (PUGGLER_SUB.some(k => s.includes(k))) return '퍼글러';
+  const p2 = String(code || '').slice(0, 2).toUpperCase();
+  if (PREFIX_IP[p2]) return PREFIX_IP[p2];
+  return '기타(나머지)';
+}
+
+function toNum(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const n = Number(String(v).replace(/,/g, '').trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+/* 엑셀 날짜(시리얼/문자열/Date)를 시간대 영향 없이 YYYY-MM-DD 로 변환 */
+function parseExcelDate(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') {
+    if (val <= 1000) return null; // 1902년 이전(0, 빈 날짜) 값은 미상 처리
+    const d = XLSX.SSF.parse_date_code(val);
+    if (!d || d.y <= 1905) return null;
+    return `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+  }
+  if (val instanceof Date && !isNaN(val)) {
+    if (val.getFullYear() <= 1905) return null;
+    return `${val.getFullYear()}-${pad2(val.getMonth() + 1)}-${pad2(val.getDate())}`;
+  }
+  const m = String(val).trim().match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (m && Number(m[1]) > 1905) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+  return null;
+}
+
+function normalizePeriod(str) {
+  const s = String(str || '');
+  let m = s.match(/(20\d{2})\s*년\s*(\d{1,2})\s*월\s*~\s*(20\d{2})\s*년\s*(\d{1,2})\s*월/);
+  if (m) return `${m[1]}.${pad2(m[2])} ~ ${m[3]}.${pad2(m[4])}`;
+  m = s.match(/(20\d{2})[.\-_](\d{1,2})\s*~\s*(20\d{2})[.\-_](\d{1,2})/);
+  if (m) return `${m[1]}.${pad2(m[2])} ~ ${m[3]}.${pad2(m[4])}`;
+  return null;
+}
+
+function extractPeriodLabel(fileName, titleCell) {
+  const fromTitle = normalizePeriod(titleCell);
+  if (fromTitle) return fromTitle;
+  const fn = String(fileName || '');
+  const fromFile = normalizePeriod(fn);
+  if (fromFile) return fromFile;
+  const ym = fn.match(/(20\d{2})[.\-_](\d{1,2})/);
+  if (ym) return `${ym[1]}.${pad2(ym[2])}`;
+  return fn.replace(/\.xls[xb]?$/i, '') || '비교 기간';
+}
+
+function formatMillion(val, digits = 1) {
+  return (val / 1e6).toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + '백만';
+}
+function formatEok(val, digits = 1) {
+  const abs = Math.abs(val);
+  if (abs >= 1e8) return (val / 1e8).toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + '억';
+  if (abs >= 1e6) return (val / 1e6).toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '백만';
+  return Math.round(val).toLocaleString('ko-KR') + '원';
+}
+function formatManQty(val, digits = 1) {
+  return (val / 1e4).toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + '만개';
+}
+function formatExactCount(val) { return Math.round(val).toLocaleString('ko-KR') + '개'; }
+function formatQty(val) {
+  return Math.abs(val) >= 1e4 ? formatManQty(val, 1) : Math.round(val).toLocaleString('ko-KR') + '개';
+}
+function median(arr) {
+  if (!arr.length) return 0;
+  const s = arr.slice().sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+function normalizeGrade(g) {
+  if (!g) return '';
+  const s = String(g).trim();
+  if (s.includes('정상')) return '정상';
+  if (s.includes('부진')) return '부진';
+  if (s.includes('악성')) return '악성';
+  return '';
+}
+
+/* ==========================================================================
+   3. 워크북 파서 (동적 열 탐색)
+   ========================================================================== */
+function excelSerialToDate(v) {
+  const d = XLSX.SSF.parse_date_code(v);
+  return d ? new Date(d.y, d.m - 1, d.d) : null;
+}
+
+function detectDynamicColumnMap(rows) {
+  const colMap = {
+    headerEndRow: 8, account: 0, code: 1, name: 2,
+    begQty: 3, begPrice: 4, begAmt: 5,
+    endCompQty: 36, unitPrice: 37, endCompAmt: 38,
+    gradeAP: 41, amtSales: 47, qtySales: 53,
+    turnover: 60, gradeBJ: 61, lastInDate: 62, months: 63,
+    refDate: null
+  };
+
+  let headerIdx = -1;
+  for (let r = 0; r < Math.min(15, rows.length); r++) {
+    const strs = (rows[r] || []).map(c => String(c ?? '').replace(/\s+/g, ''));
+    const hasCode = strs.some(s => s === '품목' || s === '품목코드' || s === '상품코드' || s === 'SKU');
+    const hasName = strs.some(s => s.includes('품목명') || s.includes('상품명') || s.includes('제품명'));
+    if (hasCode && hasName) { headerIdx = r; break; }
+  }
+  if (headerIdx === -1) return colMap;
+
+  colMap.headerEndRow = headerIdx;
+  const hMain = rows[headerIdx] || [];
+  const hSub1 = headerIdx >= 1 ? (rows[headerIdx - 1] || []) : [];
+  const hSub2 = headerIdx >= 2 ? (rows[headerIdx - 2] || []) : [];
+  const maxCols = Math.min(MAX_COLS, Math.max(hMain.length, hSub1.length, hSub2.length, 65));
+
+  let top = '', mid = '';
+  const salesCols = [], gradeCols = [];
+  let endGroupStart = -1;
+
+  for (let c = 0; c < maxCols; c++) {
+    const rawTop = String(hSub2[c] ?? '').replace(/\s+/g, '');
+    const rawMid = String(hSub1[c] ?? '').replace(/\s+/g, '');
+    const rawBot = String(hMain[c] ?? '').replace(/\s+/g, '');
+    if (rawTop && isNaN(Number(rawTop))) top = rawTop;
+    if (rawMid && isNaN(Number(rawMid))) mid = rawMid;
+
+    // 기준일 (예: BL열 헤더 2026-09-30)
+    const hv = hMain[c];
+    if (hv instanceof Date && !isNaN(hv)) colMap.refDate = hv;
+    else if (typeof hv === 'number' && hv > 36526 && hv < 73051) colMap.refDate = excelSerialToDate(hv);
+
+    if (rawBot === '품목계정' || rawTop === '품목계정') colMap.account = c;
+    else if (rawBot === '품목' || rawBot === '품목코드' || rawBot === '상품코드') colMap.code = c;
+    else if (rawBot.includes('품목명') || rawBot.includes('상품명')) colMap.name = c;
+
+    if (top.includes('기초')) {
+      if (rawBot === '수량') colMap.begQty = c;
+      else if (rawBot === '단가') colMap.begPrice = c;
+      else if (rawBot === '금액') colMap.begAmt = c;
+    } else if (top.includes('기말')) {
+      if (endGroupStart < 0) endGroupStart = c;
+      // 기말재고 그룹의 첫 수량/단가/금액 3개 열만 사용
+      if (c - endGroupStart < 3) {
+        if (rawBot === '수량') colMap.endCompQty = c;
+        else if (rawBot === '단가') colMap.unitPrice = c;
+        else if (rawBot === '금액') colMap.endCompAmt = c;
+      }
+    }
+
+    if (rawBot.includes('영업본부')) salesCols.push({ col: c, mid });
+    if (rawBot.includes('회전율')) colMap.turnover = c;
+    if (rawBot === '구분1' || rawBot.includes('재고등급(사업부)')) colMap.gradeAP = c;
+    if (rawBot === '구분' || rawBot.includes('재고등급(경영지원)') || rawBot === '실질등급') gradeCols.push(c);
+    if (rawBot.includes('최종입고') || rawBot.includes('입고일')) { colMap.lastInDate = c; colMap.months = c + 1; }
+    if (rawBot.includes('경과')) colMap.months = c;
+  }
+
+  // 영업본부: '재고금액' 그룹 → 금액, '수량' 그룹 → 수량
+  const amtCol = salesCols.find(s => s.mid.includes('금액'));
+  const qtyCol = salesCols.find(s => s.mid.includes('수량'));
+  if (amtCol) colMap.amtSales = amtCol.col; else if (salesCols[0]) colMap.amtSales = salesCols[0].col;
+  if (qtyCol) colMap.qtySales = qtyCol.col; else if (salesCols[1]) colMap.qtySales = salesCols[1].col;
+
+  if (gradeCols.length) colMap.gradeBJ = gradeCols[gradeCols.length - 1];
+  return colMap;
+}
+
+function evaluateFundamentalGradeBJ(endQty, months, turnover, isMissingDate) {
+  if (endQty <= 0) return '재고없음';
+  const m = isMissingDate ? 36 : months;
+  if (m >= 18 && turnover === 0) return '악성';
+  if (m > 3 && turnover < 0.5) return '악성';
+  if (m <= 3 || turnover > 1.0) return '정상';
+  return '부진';
+}
+
+function limitSheetColumns(ws) {
+  if (!ws || !ws['!ref']) return;
+  const rg = XLSX.utils.decode_range(ws['!ref']);
+  if (rg.e.c > MAX_COLS - 1) { rg.e.c = MAX_COLS - 1; ws['!ref'] = XLSX.utils.encode_range(rg); }
+}
+
+function extractDatasetFromBuffer(arrayBuffer, fileName) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
+
+  let sheetName = wb.SheetNames.find(n => n.includes('수불부'));
+  if (!sheetName) {
+    let maxRows = 0;
+    wb.SheetNames.forEach(n => {
+      if (n.includes('참고') || n.toLowerCase().includes('summary')) return;
+      const ref = wb.Sheets[n]['!ref'];
+      if (!ref) return;
+      const rows = XLSX.utils.decode_range(ref).e.r;
+      if (rows > maxRows) { maxRows = rows; sheetName = n; }
+    });
+    if (!sheetName) sheetName = wb.SheetNames[0];
+  }
+
+  const ws = wb.Sheets[sheetName];
+  limitSheetColumns(ws);
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+  if (!rows || rows.length < 5) throw new Error('시트에서 유효한 데이터 행을 찾을 수 없습니다.');
+
+  const titleCell = (rows[0] && rows[0][0]) ? rows[0][0] : '';
+  const periodLabel = extractPeriodLabel(fileName, titleCell);
+  const cm = detectDynamicColumnMap(rows);
+  const refDate = cm.refDate;
+
+  const items = [];
+  const skuRegex = /^[A-Z]{2,4}\d{4,8}$/i;
+
+  for (let i = cm.headerEndRow + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r) continue;
+    const rawAcc = String(r[cm.account] ?? '').trim();
+    const code = String(r[cm.code] ?? '').trim();
+    const name = String(r[cm.name] ?? '').trim();
+    if (!code || !name) continue;
+    if (/합\s*계/.test(rawAcc) || code.includes('합계') || name.includes('합계')) continue;
+
+    const isStd = (rawAcc === '제품' || rawAcc === '상품');
+    if (!isStd && !skuRegex.test(code)) continue;
+
+    const account = isStd ? rawAcc : (code.slice(3, 4) === '2' ? '상품' : '제품');
+    const prefix = code.slice(0, 3).toUpperCase();
+    const codeMid = code.slice(2, 4).toUpperCase();
+    const ip = classifyIp(name, code);
+
+    let unitPrice = toNum(r[cm.unitPrice]);
+    const begQty = toNum(r[cm.begQty]);
+    let begAmt = toNum(r[cm.begAmt]);
+    if (begAmt === 0 && begQty > 0 && unitPrice > 0) begAmt = begQty * unitPrice;
+
+    const endCompQty = toNum(r[cm.endCompQty]);
+    let endCompAmt = toNum(r[cm.endCompAmt]);
+    if (unitPrice === 0 && endCompQty > 0 && endCompAmt > 0) unitPrice = endCompAmt / endCompQty;
+    if (endCompAmt === 0 && endCompQty > 0 && unitPrice > 0) endCompAmt = endCompQty * unitPrice;
+
+    const rawAmtSales = r[cm.amtSales], rawQtySales = r[cm.qtySales];
+    let amtSales = toNum(rawAmtSales), qtySales = toNum(rawQtySales);
+    if (amtSales === 0 && qtySales > 0 && unitPrice > 0) amtSales = qtySales * unitPrice;
+    if (qtySales === 0 && amtSales > 0 && unitPrice > 0) qtySales = Math.round(amtSales / unitPrice);
+    // 영업본부 금액 셀의 소수점 잔차(예: 6,081,353.92) 정리
+    amtSales = Math.round(amtSales);
+
+    const lastInDate = parseExcelDate(r[cm.lastInDate]);
+    let months = toNum(r[cm.months]);
+    if (months === 0 && lastInDate && refDate) {
+      const [y, m] = lastInDate.split('-').map(Number);
+      months = Math.max(0, (refDate.getFullYear() - y) * 12 + (refDate.getMonth() + 1 - m));
+    }
+    const isMissingDate = (!lastInDate || months >= 1000);
+
+    const turnover = toNum(r[cm.turnover]);
+    let gradeAP = normalizeGrade(r[cm.gradeAP]);
+    let gradeBJ = normalizeGrade(r[cm.gradeBJ]);
+    if (endCompQty <= 0) {
+      gradeBJ = '재고없음'; // 기말재고 0 품목은 엑셀상 '정상'으로 표기되어도 재고없음으로 분리
+    } else if (!gradeBJ) {
+      gradeBJ = evaluateFundamentalGradeBJ(endCompQty, months, turnover, isMissingDate);
+    }
+    if (!gradeAP) gradeAP = gradeBJ;
+
+    items.push({
+      account, code, name, prefix, codeMid, ip,
+      begQty, begAmt, endCompQty, unitPrice, endCompAmt,
+      amtSales, qtySales, gradeAP, gradeBJ,
+      turnover, lastInDate, months, isMissingDate
+    });
+  }
+
+  if (!items.length) throw new Error('유효한 품목(SKU) 데이터를 추출하지 못했습니다.');
+  return { fileName, periodLabel, refDate, sheetName, items };
+}
+
+function fmtDate(d) { return d ? `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())}` : '-'; }
+
+function parseWorkbookBuffer(arrayBuffer, sourceLabel, fileName = 'data.xlsx') {
+  try {
+    const parsed = extractDatasetFromBuffer(arrayBuffer, fileName);
+    state.rawItems = parsed.items;
+    state.mainPeriodLabel = parsed.periodLabel;
+    state.refDate = parsed.refDate;
+    document.getElementById('mainPeriodBadge').textContent = parsed.periodLabel;
+    document.getElementById('refDateText').textContent = fmtDate(parsed.refDate);
+    document.title = `아이코닉스 영업본부 재고자산 현황 (${parsed.periodLabel})`;
+    hideErrorAndUploadZone();
+    updateLastUpdatedTime(sourceLabel);
+    renderAll();
+  } catch (err) {
+    console.error('엑셀 파싱 오류:', err);
+    showErrorBanner('엑셀 파일 파싱 중 오류가 발생했습니다: ' + err.message);
+  }
+}
+
+function parseCompareWorkbookBuffer(arrayBuffer, fileName) {
+  try {
+    state.compData = extractDatasetFromBuffer(arrayBuffer, fileName);
+    document.getElementById('btnSiderCompare').classList.add('btn-primary');
+    renderAll();
+    document.getElementById('secComparePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    alert('비교분석 파일을 읽는 중 오류가 발생했습니다: ' + err.message);
+  }
+}
+
+/* ==========================================================================
+   4. 조회 헬퍼
+   ========================================================================== */
+function getItemAmt(it) { return state.scope === 'sales' ? it.amtSales : it.endCompAmt; }
+function getItemQty(it) { return state.scope === 'sales' ? it.qtySales : it.endCompQty; }
+function hasStock(it) { return getItemQty(it) > 0 || getItemAmt(it) > 0; }
+function scopeLabel() { return state.scope === 'sales' ? '영업본부' : '전사'; }
+
+function getGlobalFilteredItems(src = state.rawItems) {
+  const q = state.globalSearch.trim().toLowerCase();
+  return src.filter(it => {
+    if (state.globalIp !== 'ALL' && it.ip !== state.globalIp) return false;
+    if (q && !it.code.toLowerCase().includes(q) && !it.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function sumGrades(list) {
+  const g = { amt: 0, qty: 0, '정상': 0, '부진': 0, '악성': 0 };
+  list.forEach(it => {
+    const a = getItemAmt(it);
+    g.amt += a; g.qty += getItemQty(it);
+    if (g[it.gradeBJ] !== undefined) g[it.gradeBJ] += a;
+  });
+  return g;
+}
+
+/* ==========================================================================
+   5. 렌더링
+   ========================================================================== */
+function renderAll() {
+  if (!state.rawItems.length) return;
+  const filtered = getGlobalFilteredItems();
+  document.getElementById('navSkuCount').textContent = filtered.filter(hasStock).length.toLocaleString('ko-KR');
+  renderComparePanel(filtered);
+  renderKPIs(filtered);
+  renderChart1IpComposition(filtered);
+  renderGradeSummaryTable(filtered);
+  renderChart5TopPrefix(filtered);
+  renderChart4RiskScatter(filtered);
+  renderDataTable(filtered);
+}
+
+/* ---------- 비교 패널 ---------- */
+function renderComparePanel(curFiltered) {
+  const panel = document.getElementById('secComparePanel');
+  if (!state.compData) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const compFiltered = getGlobalFilteredItems(state.compData.items);
+  document.getElementById('compHeaderTitle').textContent =
+    `[${scopeLabel()}] 비교 ${state.compData.periodLabel} → 현재 ${state.mainPeriodLabel}`;
+  document.getElementById('compMappingNote').textContent =
+    `${state.compData.fileName} · 시트 ${state.compData.sheetName} · 보유 SKU ${compFiltered.filter(hasStock).length.toLocaleString()} → ${curFiltered.filter(hasStock).length.toLocaleString()}`;
+
+  const calc = (list) => {
+    const g = sumGrades(list);
+    const ipMap = {};
+    IP_PRIORITY_LIST.forEach(ip => { ipMap[ip] = { amt: 0, qty: 0 }; });
+    list.forEach(it => { const t = ipMap[it.ip] || ipMap['기타(나머지)']; t.amt += getItemAmt(it); t.qty += getItemQty(it); });
+    return { ...g, ipMap };
+  };
+  const cur = calc(curFiltered), cmp = calc(compFiltered);
+
+  const delta = (c, p, isQty) => {
+    const diff = c - p;
+    const sign = diff > 0 ? '+' : '';
+    const cls = diff > 0 ? 'delta-plus' : (diff < 0 ? 'delta-minus' : 'delta-neutral');
+    const pct = p > 0 ? `${sign}${(diff / p * 100).toFixed(1)}%` : (c > 0 ? '신규' : '0.0%');
+    const val = isQty ? `${sign}${formatExactCount(diff)}` : `${sign}${formatMillion(diff, 1)}`;
+    return `<span class="${cls}">${diff > 0 ? '▲' : diff < 0 ? '▼' : '–'} ${val} (${pct})</span>`;
+  };
+
+  const cards = [
+    ['총 재고금액', formatMillion(cmp.amt), formatMillion(cur.amt), delta(cur.amt, cmp.amt)],
+    ['총 재고수량', formatExactCount(cmp.qty), formatExactCount(cur.qty), delta(cur.qty, cmp.qty, true)],
+    ['정상 재고금액', formatMillion(cmp['정상']), formatMillion(cur['정상']), delta(cur['정상'], cmp['정상'])],
+    ['부진 재고금액', formatMillion(cmp['부진']), formatMillion(cur['부진']), delta(cur['부진'], cmp['부진'])],
+    ['악성 재고금액', formatMillion(cmp['악성']), formatMillion(cur['악성']), delta(cur['악성'], cmp['악성'])]
+  ];
+  document.getElementById('compareSummaryGrid').innerHTML = cards.map(c => `
+    <div class="compare-stat"><div class="lbl">${c[0]}</div><div class="vals">${c[1]} → ${c[2]}</div><div class="delta">${c[3]}</div></div>`).join('');
+
+  document.getElementById('compareIpTable').innerHTML = `
+    <thead><tr><th>IP</th><th class="num">비교 금액</th><th class="num">현재 금액</th><th class="num">금액 증감</th><th class="num">비교 수량</th><th class="num">현재 수량</th><th class="num">수량 증감</th></tr></thead>
+    <tbody>${IP_PRIORITY_LIST.map(ip => {
+      const a = cmp.ipMap[ip], b = cur.ipMap[ip];
+      return `<tr><td>${ipTag(ip)}</td><td class="num">${formatMillion(a.amt)}</td><td class="num" style="font-weight:600;">${formatMillion(b.amt)}</td><td class="num">${delta(b.amt, a.amt)}</td><td class="num">${formatExactCount(a.qty)}</td><td class="num" style="font-weight:600;">${formatExactCount(b.qty)}</td><td class="num">${delta(b.qty, a.qty, true)}</td></tr>`;
+    }).join('')}</tbody>`;
+}
+
+/* ---------- KPI ---------- */
+function renderKPIs(filtered) {
+  const isSales = state.scope === 'sales';
+  const sl = scopeLabel();
+  let totalAmt = 0, totalQty = 0, compAmt = 0, compQty = 0, stocked = 0, missingDate = 0;
+  let nAmt = 0, sAmt = 0, dAmt = 0, wTurnNum = 0;
+  const turns = [], months = [];
+
+  filtered.forEach(it => {
+    const a = getItemAmt(it), q = getItemQty(it);
+    totalAmt += a; totalQty += q; compAmt += it.endCompAmt; compQty += it.endCompQty;
+    if (hasStock(it)) {
+      stocked++;
+      turns.push(it.turnover);
+      wTurnNum += it.turnover * a;
+      if (it.isMissingDate) missingDate++; else months.push(it.months);
+    }
+    if (it.gradeBJ === '정상') nAmt += a; else if (it.gradeBJ === '부진') sAmt += a; else if (it.gradeBJ === '악성') dAmt += a;
+  });
+
+  document.getElementById('kpi1Title').textContent = `${sl} 총재고금액`;
+  document.getElementById('kpi1Val').textContent = `${formatEok(totalAmt)} (${formatMillion(totalAmt, 0)})`;
+  if (state.compData) {
+    const cmpAmt = getGlobalFilteredItems(state.compData.items).reduce((s, x) => s + getItemAmt(x), 0);
+    const d = cmpAmt > 0 ? (totalAmt - cmpAmt) / cmpAmt * 100 : 0;
+    document.getElementById('kpi1Sub1').textContent = `비교기간 대비 ${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
+  } else {
+    document.getElementById('kpi1Sub1').textContent = isSales ? `전사 대비 ${compAmt > 0 ? (totalAmt / compAmt * 100).toFixed(1) : '0.0'}%` : '전사 합계 기준';
+  }
+  document.getElementById('kpi1Sub2').textContent = `보유 ${stocked.toLocaleString('ko-KR')} / 등록 ${filtered.length.toLocaleString('ko-KR')} SKU`;
+
+  document.getElementById('kpi2Title').textContent = `${sl} 총재고수량`;
+  document.getElementById('kpi2Val').textContent = `${formatQty(totalQty)}`;
+  document.getElementById('kpi2Sub1').textContent = isSales ? `전사 수량 대비 ${compQty > 0 ? (totalQty / compQty * 100).toFixed(1) : '0.0'}%` : `${Math.round(totalQty).toLocaleString('ko-KR')}개`;
+  document.getElementById('kpi2Sub2').textContent = `재고보유 ${stocked.toLocaleString('ko-KR')} SKU`;
+
+  document.getElementById('kpi3Val').textContent = `${formatEok(sAmt + dAmt)}`;
+  document.getElementById('kpi3Sub1').textContent = `악성 ${formatMillion(dAmt, 0)} · 부진 ${formatMillion(sAmt, 0)}`;
+  document.getElementById('kpi3Sub2').textContent = `비중 ${totalAmt > 0 ? ((sAmt + dAmt) / totalAmt * 100).toFixed(1) : '0.0'}%`;
+
+  const medTurn = median(turns), medMonth = median(months);
+  const wTurn = totalAmt > 0 ? wTurnNum / totalAmt : 0;
+  const avgMonth = months.length ? months.reduce((a, b) => a + b, 0) / months.length : 0;
+  document.getElementById('kpi4Val').textContent = `${medTurn.toFixed(1)}회 / ${Math.round(medMonth)}개월`;
+  document.getElementById('kpi4Sub1').textContent = `금액가중 평균 ${wTurn.toFixed(1)}회`;
+  document.getElementById('kpi4Sub2').textContent = `평균 경과 ${avgMonth.toFixed(1)}개월${missingDate ? ` · 입고일 미상 ${missingDate}건 제외` : ''}`;
+}
+
+/* ---------- IP 구성 ---------- */
+function renderChart1IpComposition(filtered) {
+  const st = {};
+  IP_PRIORITY_LIST.forEach(ip => { st[ip] = { ip, amt: 0, qty: 0, sku: 0, dead: 0, slow: 0 }; });
+  let totalAmt = 0;
+  filtered.forEach(it => {
+    if (!hasStock(it)) return;
+    const a = getItemAmt(it), q = getItemQty(it);
+    const s = st[it.ip] || st['기타(나머지)'];
+    s.amt += a; s.qty += q; s.sku++; totalAmt += a;
+    if (it.gradeBJ === '악성') s.dead += a; else if (it.gradeBJ === '부진') s.slow += a;
+  });
+  const list = IP_PRIORITY_LIST.map(ip => st[ip]);
+
+  document.getElementById('ipSummaryGrid').innerHTML = list.map(d => {
+    const share = totalAmt > 0 ? d.amt / totalAmt * 100 : 0;
+    const risk = d.amt > 0 ? (d.dead + d.slow) / d.amt * 100 : 0;
+    const c = ipColor(d.ip);
+    return `<div class="ip-cell" style="box-shadow:inset 0 3px 0 ${c.base === '#FFFFFF' ? c.strong : (luminance(c.base) > 0.6 ? c.strong : c.base)};">
+      <div class="ip-cell-head"><span><i class="ip-chip" style="background:${c.base};border-color:${c.strong};"></i>${d.ip} <small>${d.sku}종</small></span><span>${share.toFixed(1)}%</span></div>
+      <div class="ip-cell-amt">${formatMillion(d.amt)}</div>
+      <div class="ip-cell-row"><span>${formatManQty(d.qty)}</span><span style="color:${risk >= 30 ? 'var(--hc-red)' : 'var(--text-secondary)'};font-weight:600;">위험 ${risk.toFixed(1)}%</span></div>
+      <div class="share-bar" style="background:${mixColor(c.base, '#FFFFFF', 0.6)}"><span style="width:${Math.min(100, share).toFixed(1)}%;background:${c.strong}"></span></div>
+      <div class="ip-cell-desc" title="${IP_META_DESC[d.ip]}">${IP_META_DESC[d.ip]}</div>
+    </div>`;
+  }).join('');
+
+  if (charts.ipComp) charts.ipComp.destroy();
+  charts.ipComp = new Chart(document.getElementById('chartIpComposition'), {
+    type: 'bar',
+    data: {
+      labels: list.map(d => d.ip),
+      datasets: [
+        { label: '재고금액 (백만원)', data: list.map(d => +(d.amt / 1e6).toFixed(1)), backgroundColor: list.map(d => ipColor(d.ip).base), borderColor: list.map(d => ipColor(d.ip).strong), borderWidth: 1, yAxisID: 'yAmt', barPercentage: .7, categoryPercentage: .7 },
+        { type: 'line', label: '재고수량 (만개)', data: list.map(d => +(d.qty / 1e4).toFixed(1)), borderColor: '#000', borderWidth: 1.5, tension: 0.3, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: list.map(d => ipColor(d.ip).base), pointBorderColor: list.map(d => ipColor(d.ip).strong), pointBorderWidth: 1.5, yAxisID: 'yQty', order: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: { afterBody: (items) => {
+          const d = list[items[0].dataIndex];
+          return `비중 ${totalAmt > 0 ? (d.amt / totalAmt * 100).toFixed(1) : '0.0'}% · ${Math.round(d.qty).toLocaleString('ko-KR')}개 · ${d.sku} SKU`;
+        } } }
+      },
+      scales: {
+        yAmt: { position: 'left', beginAtZero: true, ticks: { callback: v => v.toLocaleString('ko-KR') } },
+        yQty: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '만' } },
+        x: { grid: { display: false }, ticks: { color: '#000', font: { weight: 600 } } }
+      }
+    }
+  });
+}
+
+/* ---------- 등급 요약 ---------- */
+function renderGradeSummaryTable(filtered) {
+  document.getElementById('gradeSummaryDesc').textContent = `[${scopeLabel()}] 재고 보유 품목 기준 등급별 품목수·수량·금액·비중`;
+  const stats = {}; STOCK_GRADES.forEach(g => stats[g] = { count: 0, qty: 0, amt: 0 });
+  let tc = 0, tq = 0, ta = 0, noStock = 0;
+  filtered.forEach(it => {
+    if (!hasStock(it)) { noStock++; return; }
+    const s = stats[it.gradeBJ]; if (!s) return;
+    const a = getItemAmt(it), q = getItemQty(it);
+    s.count++; s.qty += q; s.amt += a; tc++; tq += q; ta += a;
+  });
+  document.getElementById('gradeSummaryBadge').textContent = `보유 ${tc.toLocaleString('ko-KR')} SKU`;
+
+  const rows = STOCK_GRADES.map(g => {
+    const s = stats[g];
+    return `<tr>
+      <td><span class="grade-cell"><i class="grade-dot" style="background:${GRADE_COLOR[g]}"></i>${g} 재고</span></td>
+      <td class="num">${s.count.toLocaleString('ko-KR')}</td>
+      <td class="num">${Math.round(s.qty).toLocaleString('ko-KR')}</td>
+      <td class="num" style="font-weight:650;">${formatMillion(s.amt)}</td>
+      <td class="num" style="font-weight:650;${g === '악성' ? 'color:var(--hc-red);' : ''}">${ta > 0 ? (s.amt / ta * 100).toFixed(1) : '0.0'}%</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('gradeSummaryTableBody').innerHTML = rows + `
+    <tr class="total"><td>합계</td><td class="num">${tc.toLocaleString('ko-KR')}</td><td class="num">${Math.round(tq).toLocaleString('ko-KR')}</td><td class="num">${formatMillion(ta)}</td><td class="num">100.0%</td></tr>
+    <tr><td colspan="5" style="font-size:11px;color:var(--text-tertiary);border-bottom:0;">재고없음 ${noStock.toLocaleString('ko-KR')} SKU는 등급 집계에서 제외${state.scope === 'sales' ? ' (영업본부 재고가 없는 품목 포함)' : ''}</td></tr>`;
+
+  const risk = stats['부진'].amt + stats['악성'].amt;
+  document.getElementById('gradeSummaryDiffGrid').innerHTML = `
+    <div class="summary-row"><span><strong>[${scopeLabel()}] 악성 + 부진 비중</strong></span><span class="big-red">${ta > 0 ? (risk / ta * 100).toFixed(1) : '0.0'}%</span></div>
+    <div class="summary-row"><span>총 ${formatMillion(risk)}원 = 악성 ${formatMillion(stats['악성'].amt)} + 부진 ${formatMillion(stats['부진'].amt)}</span></div>`;
+}
+
+/* ---------- 품목군 Top 10 ---------- */
+function renderChart5TopPrefix(globalFiltered) {
+  let gAmt = 0, gQty = 0;
+  globalFiltered.forEach(it => { gAmt += getItemAmt(it); gQty += getItemQty(it); });
+
+  const sel = globalFiltered.filter(it =>
+    (state.c5Mids.size === 0 || state.c5Mids.has(midKey(it))) &&
+    (state.c5Ips.size === 0 || state.c5Ips.has(it.ip)) && hasStock(it));
+
+  const tot = { amt: 0, qty: 0, '정상': [0, 0], '부진': [0, 0], '악성': [0, 0] };
+  const map = new Map();
+  sel.forEach(it => {
+    const a = getItemAmt(it), q = getItemQty(it);
+    tot.amt += a; tot.qty += q;
+    if (tot[it.gradeBJ]) { tot[it.gradeBJ][0] += a; tot[it.gradeBJ][1] += q; }
+    if (!map.has(it.prefix)) map.set(it.prefix, { prefix: it.prefix, mids: new Set(), '정상': 0, '부진': 0, '악성': 0, total: 0, qty: 0, sku: 0 });
+    const e = map.get(it.prefix);
+    e.mids.add(it.codeMid);
+    if (e[it.gradeBJ] !== undefined) e[it.gradeBJ] += a;
+    e.total += a; e.qty += q; e.sku++;
+  });
+  const top10 = Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 10);
+
+  const midLabel = state.c5Mids.size === 0 ? '전체' : Array.from(state.c5Mids).map(m => MID_NAME[m] || m).join(', ');
+  const ipLabel = state.c5Ips.size === 0 ? '전체' : Array.from(state.c5Ips).join(', ');
+  document.getElementById('leftTabTitle').textContent = `품목군별 재고금액 · 등급 비중 Top 10 — ${midLabel}`;
+
+  const pct = (v, t) => t > 0 ? (v / t * 100).toFixed(1) : '0.0';
+  document.getElementById('chart5AnalysisBox').innerHTML = `
+    <div class="summary-row"><span><strong>선택영역 합계</strong> 코드 ${midLabel} · IP ${ipLabel}</span><span>전체 대비 금액 <strong>${pct(tot.amt, gAmt)}%</strong> · 수량 ${pct(tot.qty, gQty)}%</span></div>
+    <div class="summary-row" style="justify-content:flex-start;gap:6px;">
+      <span class="pill">금액 <b>${formatMillion(tot.amt)}</b></span>
+      <span class="pill">수량 <b>${Math.round(tot.qty).toLocaleString('ko-KR')}개</b></span>
+      ${STOCK_GRADES.map(g => `<span class="pill"><i style="background:${GRADE_COLOR[g]}"></i>${g} <b>${formatMillion(tot[g][0])}</b> ${pct(tot[g][0], tot.amt)}%</span>`).join('')}
+    </div>`;
+
+  const totalLabel = {
+    id: 'stackedTotalLabel',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart; ctx.save();
+      ctx.font = "600 11px Pretendard, sans-serif"; ctx.fillStyle = '#000'; ctx.textBaseline = 'middle';
+      const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+      meta.data.forEach((bar, i) => { const d = top10[i]; if (d) ctx.fillText(Math.round(d.total / 1e6).toLocaleString('ko-KR'), bar.x + 6, bar.y); });
+      ctx.restore();
+    }
+  };
+  const maxM = top10.length ? Math.max(...top10.map(d => d.total / 1e6)) : 100;
+
+  if (charts.topPrefix) charts.topPrefix.destroy();
+  charts.topPrefix = new Chart(document.getElementById('chartTopPrefix'), {
+    type: 'bar', plugins: [totalLabel],
+    data: {
+      labels: top10.map(d => prefixLabel(d.prefix)),
+      datasets: [
+        { label: '악성', data: top10.map(d => +(d['악성'] / 1e6).toFixed(1)), backgroundColor: GRADE_COLOR['악성'] },
+        { label: '부진', data: top10.map(d => +(d['부진'] / 1e6).toFixed(1)), backgroundColor: GRADE_COLOR['부진'] },
+        { label: '정상', data: top10.map(d => +(d['정상'] / 1e6).toFixed(1)), backgroundColor: GRADE_COLOR['정상'] }
+      ]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 44 } },
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: {
+          label: c => `${c.dataset.label}: ${c.parsed.x.toLocaleString('ko-KR')}백만원`,
+          afterBody: items => { const d = top10[items[0].dataIndex];
+            return `합계 ${formatMillion(d.total)} · ${Math.round(d.qty).toLocaleString('ko-KR')}개 (${d.sku} SKU)\n코드분류 ${Array.from(d.mids).join(', ')} · 위험 ${pct(d['악성'] + d['부진'], d.total)}%`; }
+        } }
+      },
+      scales: {
+        x: { stacked: true, suggestedMax: maxM * 1.12, title: { display: true, text: '재고금액 (백만원)' }, ticks: { callback: v => v.toLocaleString('ko-KR') } },
+        y: { stacked: true, grid: { display: false }, ticks: { color: '#000' } }
+      }
+    }
+  });
+}
+
+/* ---------- 리스크 매트릭스 ---------- */
+function renderChart4RiskScatter(globalFiltered) {
+  const valid = globalFiltered.filter(it => getItemAmt(it) > 0 && !it.isMissingDate && inMonthRange(it, state.c4Months));
+  const validAmt = valid.reduce((s, x) => s + getItemAmt(x), 0);
+  const grades = state.c4Grades.size ? state.c4Grades : new Set(STOCK_GRADES);
+  const sel = valid.filter(it => grades.has(it.gradeBJ));
+
+  let amt = 0, qty = 0, dzAmt = 0, dzCnt = 0, sumM = 0;
+  sel.forEach(it => {
+    const a = getItemAmt(it); amt += a; qty += getItemQty(it); sumM += it.months;
+    if (it.months >= 18 && it.turnover < 0.5) { dzAmt += a; dzCnt++; }
+  });
+  const box = document.getElementById('chart4DynamicBox');
+  box.className = grades.has('악성') ? 'summary-box danger' : 'summary-box';
+  box.innerHTML = `
+    <div class="summary-row"><span><strong>선택 등급 ${Array.from(grades).join(' · ')}</strong> ${sel.length.toLocaleString()} SKU</span><span>비중 <strong>${validAmt > 0 ? (amt / validAmt * 100).toFixed(1) : '0.0'}%</strong> · ${formatMillion(amt)} · ${Math.round(qty).toLocaleString('ko-KR')}개</span></div>
+    <div class="summary-row" style="justify-content:flex-start;gap:6px;">
+      <span class="pill">평균 경과 <b>${sel.length ? (sumM / sel.length).toFixed(1) : '0.0'}개월</b></span>
+      <span class="pill">중위 회전율 <b>${median(sel.map(x => x.turnover)).toFixed(1)}회</b></span>
+      <span class="pill" style="border-color:var(--hc-red);color:var(--hc-red);">고위험(18개월↑ · 회전율 0.5↓) <b style="color:var(--hc-red);">${dzCnt} SKU · ${formatMillion(dzAmt)}</b></span>
+    </div>`;
+
+  const top = sel.slice().sort((a, b) => getItemAmt(b) - getItemAmt(a)).slice(0, 250);
+  document.getElementById('scatterNoteBadge').textContent = `상위 ${top.length}개 고액 SKU`;
+  const buckets = { '악성': [], '부진': [], '정상': [] };
+  top.forEach(it => {
+    const a = getItemAmt(it);
+    buckets[it.gradeBJ] && buckets[it.gradeBJ].push({ x: it.months, y: Math.min(12, it.turnover), r: Math.max(3, Math.min(20, Math.sqrt(a / 1e6) * 1.1)), raw: it, amt: a });
+  });
+
+  const zone = {
+    id: 'dangerZone',
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea: ca, scales: { x, y } } = chart; if (!ca) return;
+      const x0 = Math.max(ca.left, x.getPixelForValue(18)), y0 = Math.max(ca.top, y.getPixelForValue(0.5));
+      if (ca.right <= x0 || ca.bottom <= y0) return;
+      ctx.save();
+      ctx.fillStyle = 'rgba(218,0,17,0.06)'; ctx.fillRect(x0, y0, ca.right - x0, ca.bottom - y0);
+      ctx.strokeStyle = '#DA0011'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.strokeRect(x0, y0, ca.right - x0, ca.bottom - y0);
+      ctx.restore();
+      ctx.save(); ctx.fillStyle = '#DA0011'; ctx.font = "700 10px Pretendard, sans-serif"; ctx.textAlign = 'right';
+      ctx.fillText('고위험 영역 · 18개월↑ & 회전율 0.5↓', ca.right - 6, y0 - 6); ctx.restore();
+    }
+  };
+  const ds = [];
+  if (grades.has('악성')) ds.push({ label: '악성', data: buckets['악성'], backgroundColor: 'rgba(218,0,17,0.55)', borderColor: '#DA0011', borderWidth: 1 });
+  if (grades.has('부진')) ds.push({ label: '부진', data: buckets['부진'], backgroundColor: 'rgba(243,175,112,0.7)', borderColor: '#C57A33', borderWidth: 1 });
+  if (grades.has('정상')) ds.push({ label: '정상', data: buckets['정상'], backgroundColor: 'rgba(200,235,204,0.8)', borderColor: '#5FA86A', borderWidth: 1 });
+
+  if (charts.riskScatter) charts.riskScatter.destroy();
+  charts.riskScatter = new Chart(document.getElementById('chartRiskScatter'), {
+    type: 'bubble', plugins: [zone], data: { datasets: ds },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: { label: c => { const d = c.raw.raw; return [
+          `[${d.code}] ${d.name}`,
+          `${d.ip} · ${formatMillion(c.raw.amt, 2)} · ${Math.round(getItemQty(d)).toLocaleString('ko-KR')}개`,
+          `경과 ${d.months}개월 (최종입고 ${d.lastInDate || '-'})`,
+          `회전율 ${d.turnover}회 · 등급 ${d.gradeBJ}`]; } } }
+      },
+      scales: {
+        x: { min: 0, title: { display: true, text: '최종입고 경과개월 (BL)' } },
+        y: { min: 0, max: 12, title: { display: true, text: '재고회전율 (BI · 12회 상한)' } }
+      }
+    }
+  });
+}
+
+/* ---------- SKU 명세 ---------- */
+function getTableItems(globalFiltered) {
+  const tq = state.tableSearch.trim().toLowerCase();
+  const base = globalFiltered.filter(it => {
+    if (state.tableCodeMid !== 'ALL' && midKey(it) !== state.tableCodeMid) return false;
+    if (state.tableIps.size < IP_PRIORITY_LIST.length && !state.tableIps.has(it.ip)) return false;
+    if (state.tableGrades.size > 0 && !state.tableGrades.has(hasStock(it) ? it.gradeBJ : '재고없음')) return false;
+    if (tq && !it.code.toLowerCase().includes(tq) && !it.name.toLowerCase().includes(tq)) return false;
+    if (!inMonthRange(it, state.tableMonths)) return false;
+    return true;
+  });
+  const dead = base.filter(it => it.gradeBJ === '악성' && getItemAmt(it) > 0).sort((a, b) => getItemAmt(b) - getItemAmt(a)).slice(0, 50);
+  let list = state.quickTab === 'DEAD_TOP50' ? dead : base;
+  const dir = state.sortDir === 'asc' ? 1 : -1;
+  list = list.slice().sort((a, b) => {
+    switch (state.sortKey) {
+      case 'code': return a.code.localeCompare(b.code, 'en') * dir;
+      case 'ip': return a.ip.localeCompare(b.ip, 'ko') * dir;
+      case 'name': return a.name.localeCompare(b.name, 'ko') * dir;
+      case 'qty': return (getItemQty(a) - getItemQty(b)) * dir;
+      case 'unitPrice': return (a.unitPrice - b.unitPrice) * dir;
+      case 'amt': return (getItemAmt(a) - getItemAmt(b)) * dir;
+      case 'turnover': return (a.turnover - b.turnover) * dir;
+      case 'gradeBJ': return a.gradeBJ.localeCompare(b.gradeBJ, 'ko') * dir;
+      case 'months': return (a.months - b.months) * dir;
+      case 'plan': { const pa = getPlan(a.code, state.planTeam) ? 1 : 0, pb = getPlan(b.code, state.planTeam) ? 1 : 0;
+        return (pb - pa) || (getItemAmt(b) - getItemAmt(a)); }
+      default: return 0;
+    }
+  });
+  return { base, dead, list };
+}
+
+function renderGradeTag(it) {
+  const g = hasStock(it) ? it.gradeBJ : '재고없음';
+  if (g === '정상') return `<span class="tag tag-normal">정상</span>`;
+  if (g === '부진') return `<span class="tag tag-slow">부진</span>`;
+  if (g === '악성') return `<span class="tag tag-red">악성</span>`;
+  return `<span class="tag tag-muted">재고없음</span>`;
+}
+
+function renderDataTable(globalFiltered) {
+  const isSales = state.scope === 'sales';
+  document.getElementById('thQtyLabel').textContent = isSales ? '영업본부수량(BB)' : '전사기말수량(AK)';
+  document.getElementById('thAmtLabel').textContent = isSales ? '영업본부금액(AV)' : '전사기말금액(AM)';
+
+  const { base, dead, list } = getTableItems(globalFiltered);
+  document.getElementById('qCountAll').textContent = base.length.toLocaleString('ko-KR');
+  document.getElementById('qCountDead50').textContent = dead.length.toLocaleString('ko-KR');
+
+  const total = list.length, pages = Math.max(1, Math.ceil(total / state.pageSize));
+  if (state.page > pages) state.page = pages;
+  const start = (state.page - 1) * state.pageSize;
+  const slice = list.slice(start, start + state.pageSize);
+
+  document.getElementById('tableSummaryInfo').textContent = `총 ${total.toLocaleString('ko-KR')}개 SKU 중 ${total ? start + 1 : 0}–${Math.min(start + state.pageSize, total)} 표시`;
+  document.getElementById('pageIndicator').textContent = `${state.page} / ${pages}`;
+  document.getElementById('btnPrevPage').disabled = state.page <= 1;
+  document.getElementById('btnNextPage').disabled = state.page >= pages;
+
+  const tbody = document.getElementById('skuTableBody');
+  if (!slice.length) { tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-tertiary);">조건에 해당하는 품목이 없습니다.</td></tr>`; return; }
+
+  tbody.innerHTML = slice.map(it => {
+    const q = getItemQty(it), a = getItemAmt(it);
+    const dateCell = it.isMissingDate
+      ? `<span class="tag tag-red-line">입고일 미상</span>`
+      : `${it.lastInDate} <small style="color:var(--text-tertiary);">(${it.months}개월)</small>`;
+    const low = it.turnover < 0.5 && hasStock(it);
+    return `<tr>
+      <td><span class="code-badge">${it.code}</span> <small style="color:var(--text-tertiary);">${it.codeMid}</small></td>
+      <td>${ipTag(it.ip)}</td>
+      <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</td>
+      <td class="num">${Math.round(q).toLocaleString('ko-KR')}</td>
+      <td class="num">${Math.round(it.unitPrice).toLocaleString('ko-KR')}</td>
+      <td class="num" style="font-weight:650;">${Math.round(a).toLocaleString('ko-KR')}<small style="display:block;color:var(--text-tertiary);font-weight:400;">${formatMillion(a, 2)}</small></td>
+      <td class="num" style="${low ? 'color:var(--hc-red);font-weight:700;' : ''}">${it.turnover.toFixed(1)}</td>
+      <td>${renderGradeTag(it)}</td>
+      <td style="white-space:nowrap;">${dateCell}</td>
+      <td>${renderPlanButtons(it)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ==========================================================================
+   6. 검색 추천
+   ========================================================================== */
+function updateSearchSuggestions(query) {
+  const box = document.getElementById('tableSuggestBox');
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    const kws = ['뽀로로', '타요', '잔망루피', '데코데코', '해치', '퍼글러', '크롱', '스퀴시', '키링', '봉제', '사운드북', 'TYT', 'PRT', 'EET'];
+    box.innerHTML = `<div class="suggest-header">추천 검색 키워드</div><div class="suggest-chips">${kws.map(k => `<span class="suggest-chip" data-kw="${k}">${k}</span>`).join('')}</div>`;
+    box.classList.add('open'); bindSuggestClicks(); return;
+  }
+  const tokens = new Set(), matched = [];
+  for (const it of state.rawItems) {
+    if (it.code.toLowerCase().includes(q) || it.name.toLowerCase().includes(q)) {
+      if (matched.length < 8) matched.push(it);
+      it.name.split(/[\s()[\]\-_/,]+/).forEach(w => { if (w.length >= 2 && w.toLowerCase().includes(q) && tokens.size < 12) tokens.add(w); });
+    }
+  }
+  if (!matched.length) { box.innerHTML = `<div style="padding:8px;font-size:12px;color:var(--text-tertiary);">'${escapeHtml(query)}'와 일치하는 품목이 없습니다.</div>`; box.classList.add('open'); return; }
+  box.innerHTML = `
+    ${tokens.size ? `<div class="suggest-header">연관 키워드</div><div class="suggest-chips">${Array.from(tokens).map(k => `<span class="suggest-chip" data-kw="${escapeHtml(k)}">${escapeHtml(k)}</span>`).join('')}</div>` : ''}
+    <div class="suggest-header">일치 품목 (미리보기 ${matched.length}건)</div>
+    ${matched.map(it => `<div class="suggest-item" data-kw="${escapeHtml(it.code)}"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="code-badge" style="margin-right:6px;">${it.code}</span>${escapeHtml(it.name)}</div><span style="font-size:11px;color:var(--text-tertiary);flex-shrink:0;">${formatMillion(getItemAmt(it))}</span></div>`).join('')}`;
+  box.classList.add('open'); bindSuggestClicks();
+}
+function bindSuggestClicks() {
+  const box = document.getElementById('tableSuggestBox');
+  box.querySelectorAll('[data-kw]').forEach(el => el.addEventListener('click', () => {
+    const kw = el.getAttribute('data-kw');
+    document.getElementById('inpTableSearch').value = kw;
+    state.tableSearch = kw; state.page = 1; box.classList.remove('open');
+    renderDataTable(getGlobalFilteredItems());
+  }));
+}
+
+/* ==========================================================================
+   7. 데이터 로딩 · 자동 갱신
+   ========================================================================== */
+async function fetchExcelFromServer() {
+  const pill = document.getElementById('envStatusPill');
+  try {
+    const res = await fetch(DATA_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    pill.className = 'status-pill live'; pill.textContent = 'LIVE · 매일 00:00 갱신';
+    parseWorkbookBuffer(buf, '서버 data.xlsx', 'data.xlsx');
+  } catch (err) {
+    console.warn('자동 fetch 실패:', err);
+    pill.className = 'status-pill error'; pill.textContent = 'data.xlsx 대기';
+    showUploadZone('서버에서 data.xlsx를 불러오지 못했습니다', `${DATA_URL} 경로의 파일을 찾을 수 없습니다(${err.message}). 상단 [기준 파일 선택] 버튼 또는 드래그 & 드롭으로 재고등급현황 작성표를 선택하세요.`);
+  }
+}
+function scheduleMidnightRefresh() {
+  if (state.midnightTimer) clearTimeout(state.midnightTimer);
+  const now = new Date(), next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+  state.midnightTimer = setTimeout(async () => { await fetchExcelFromServer(); scheduleMidnightRefresh(); }, next - now);
+}
+function handleLocalFile(file) {
+  if (!file) return;
+  const pill = document.getElementById('envStatusPill');
+  pill.className = 'status-pill file'; pill.textContent = `로컬 파일 · ${file.name}`;
+  const reader = new FileReader();
+  reader.onload = e => parseWorkbookBuffer(e.target.result, file.name, file.name);
+  reader.onerror = () => showErrorBanner('파일을 읽는 도중 오류가 발생했습니다.');
+  reader.readAsArrayBuffer(file);
+}
+function handleCompareFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => parseCompareWorkbookBuffer(e.target.result, file.name);
+  reader.onerror = () => alert('비교 파일을 읽는 도중 오류가 발생했습니다.');
+  reader.readAsArrayBuffer(file);
+}
+function clearCompareMode() {
+  state.compData = null;
+  document.getElementById('compareFileInput').value = '';
+  document.getElementById('btnSiderCompare').classList.remove('btn-primary');
+  renderAll();
+}
+function showUploadZone(title, desc) {
+  document.getElementById('dropZoneContainer').style.display = 'block';
+  if (title) document.getElementById('dropZoneTitle').textContent = title;
+  if (desc) document.getElementById('dropZoneDesc').textContent = desc;
+}
+function hideErrorAndUploadZone() {
+  document.getElementById('dropZoneContainer').style.display = 'none';
+  document.getElementById('errorBanner').style.display = 'none';
+}
+function showErrorBanner(msg) {
+  document.getElementById('errorBanner').style.display = 'flex';
+  document.getElementById('errorBannerMsg').textContent = msg;
+}
+function updateLastUpdatedTime(src) {
+  document.getElementById('lastUpdatedText').textContent = `최종 갱신 ${new Date().toLocaleTimeString('ko-KR', { hour12: false })} · ${src}`;
+}
+
+/* ==========================================================================
+   8. 이벤트
+   ========================================================================== */
+function setupMultiButtonGroup(id, set, onChange) {
+  const c = document.getElementById(id), btns = c.querySelectorAll('.multi-btn');
+  btns.forEach(btn => btn.addEventListener('click', () => {
+    const v = btn.dataset.val;
+    if (v === 'ALL') set.clear(); else set.has(v) ? set.delete(v) : set.add(v);
+    btns.forEach(b => b.classList.toggle('active', b.dataset.val === 'ALL' ? set.size === 0 : set.has(b.dataset.val)));
+    onChange();
+  }));
+}
+
+function exportFilteredToCsv() {
+  const { list } = getTableItems(getGlobalFilteredItems());
+  if (!list.length) return;
+  const isSales = state.scope === 'sales';
+  const headers = ['품목코드', '코드분류', 'IP', '품목명', isSales ? '영업본부수량' : '전사기말수량', '기말단가', isSales ? '영업본부금액' : '전사기말금액', '재고회전율', '등급(BJ)', '최종입고일', '경과개월', ...PLAN_TEAMS.map(t => '소진계획_' + t)];
+  const rows = [headers.join(',')];
+  list.forEach(it => rows.push([
+    it.code, it.codeMid, it.ip, `"${it.name.replace(/"/g, '""')}"`,
+    Math.round(getItemQty(it)), Math.round(it.unitPrice), Math.round(getItemAmt(it)),
+    it.turnover, hasStock(it) ? it.gradeBJ : '재고없음', it.isMissingDate ? '입고일미상' : (it.lastInDate || ''), it.months,
+    ...PLAN_TEAMS.map(t => csvCell(getPlan(it.code, t)))
+  ].join(',')));
+  const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `아이코닉스_${isSales ? '영업본부' : '전사'}_재고명세_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+}
+
+/* ==========================================================================
+   경과개월 바게이지 (1~60개월 + 60개월 초과 칸)
+   ========================================================================== */
+const GAUGE_CELLS = 61; // 1..60, 61 = 60개월 초과
+function monthCell(m) { return m > 60 ? 61 : Math.max(1, Math.round(m)); }
+function isFullRange(r) { return r.lo <= 1 && r.hi >= GAUGE_CELLS; }
+function inMonthRange(it, r) {
+  if (isFullRange(r)) return true;
+  if (it.isMissingDate) return false;
+  const c = monthCell(it.months);
+  return c >= r.lo && c <= r.hi;
+}
+function rangeText(r) {
+  if (isFullRange(r)) return '전체 기간';
+  const f = c => c === 61 ? '60개월 초과' : `${c}개월`;
+  if (r.lo === r.hi) return f(r.lo);
+  return r.hi === 61 ? `${r.lo}개월 이상` : `${f(r.lo)} ~ ${f(r.hi)}`;
+}
+const gauges = {};
+function createMonthGauge(host, initial, onChange) {
+  let r = { ...initial };
+  const N = GAUGE_CELLS, ticks = [1, 12, 24, 36, 48];
+  const pos = c => ((c - 1) / (N - 1) * 100);
+  host.innerHTML = `<div class="gauge">
+    <div class="gauge-head">
+      <div class="gauge-title">경과개월<small>1 ~ 60개월 · 60+ 구간</small></div>
+      <div class="gauge-val"></div>
+    </div>
+    <div class="gauge-track-wrap">
+      <div class="gauge-track"><div class="gauge-over-zone" style="left:${pos(60)}%"></div></div>
+      <div class="gauge-fill"></div>
+      <input type="range" class="gauge-range" data-k="lo" min="1" max="${N}" step="1" aria-label="경과개월 시작">
+      <input type="range" class="gauge-range" data-k="hi" min="1" max="${N}" step="1" aria-label="경과개월 끝">
+    </div>
+    <div class="gauge-scale">${ticks.map(t => `<span style="left:${pos(t)}%">${t}</span>`).join('')}<span class="over" style="left:100%">60+</span></div>
+    <div class="gauge-foot"><button type="button" class="gauge-reset" data-reset>전체 기간으로 초기화</button></div>
+  </div>`;
+  const wrap = host.querySelector('.gauge-track-wrap'), fill = host.querySelector('.gauge-fill'), val = host.querySelector('.gauge-val');
+  const lo = host.querySelector('[data-k="lo"]'), hi = host.querySelector('[data-k="hi"]');
+  const paint = () => {
+    lo.value = r.lo; hi.value = r.hi;
+    fill.style.left = pos(r.lo) + '%';
+    fill.style.width = Math.max(0, pos(r.hi) - pos(r.lo)) + '%';
+    if (r.lo === r.hi) { fill.style.width = '0%'; }
+    val.textContent = rangeText(r);
+    // 두 손잡이가 겹칠 때 조작 가능한 쪽을 위로
+    lo.style.zIndex = r.lo >= N - 1 ? 3 : 2; hi.style.zIndex = r.lo >= N - 1 ? 2 : 3;
+  };
+  const onInput = e => {
+    const k = e.target.dataset.k, v = +e.target.value;
+    if (k === 'lo') r.lo = Math.min(v, r.hi); else r.hi = Math.max(v, r.lo);
+    wrap.classList.add('dragging'); paint();
+  };
+  const commit = () => { wrap.classList.remove('dragging'); onChange({ ...r }); };
+  [lo, hi].forEach(inp => { inp.addEventListener('input', onInput); inp.addEventListener('change', commit); });
+  // 트랙 클릭 시 가까운 손잡이를 이동
+  wrap.addEventListener('pointerdown', e => {
+    if (!e.target.classList.contains('gauge-range')) {
+      const rc = wrap.getBoundingClientRect();
+      const c = Math.round(Math.max(0, Math.min(1, (e.clientX - rc.left) / rc.width)) * (N - 1)) + 1;
+      if (Math.abs(c - r.lo) <= Math.abs(c - r.hi)) r.lo = Math.min(c, r.hi); else r.hi = Math.max(c, r.lo);
+      paint(); commit();
+    }
+  });
+  host.querySelector('[data-reset]').addEventListener('click', () => { r = { lo: 1, hi: N }; paint(); onChange({ ...r }); });
+  paint();
+  return { set(nr) { r = { ...nr }; paint(); } };
+}
+function clearPlanSort() { state.planTeam = null; document.querySelectorAll('#planSortGroup button').forEach(x => x.classList.remove('on')); }
+function syncPeriodLabels() {
+  const b = document.getElementById('btnC4Period');
+  const full = isFullRange(state.c4Months);
+  b.textContent = full ? '기간' : `기간 · ${rangeText(state.c4Months)}`;
+  b.classList.toggle('on', !full);
+  const th = document.getElementById('thMonths'), flt = document.getElementById('thMonthsFlt');
+  const tfull = isFullRange(state.tableMonths);
+  th.classList.toggle('on', !tfull);
+  flt.innerHTML = tfull ? '' : `<span class="flt">${rangeText(state.tableMonths)}</span>`;
+}
+function placeBelow(pop, anchorEl, alignRight) {
+  const rc = anchorEl.getBoundingClientRect();
+  pop.style.visibility = 'hidden'; pop.classList.add('open');
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  let left = alignRight ? rc.right - w : rc.left;
+  left = Math.max(12, Math.min(left, document.documentElement.clientWidth - w - 12));
+  let top = rc.bottom + 6;
+  if (top + h > window.innerHeight - 8 && rc.top - h - 6 > 8) top = rc.top - h - 6;
+  pop.style.left = (left + window.scrollX) + 'px';
+  pop.style.top = (top + window.scrollY) + 'px';
+  pop.style.visibility = '';
+}
+
+/* ==========================================================================
+   소진계획 (팀별 메모 · 브라우저 저장)
+   ========================================================================== */
+const PLAN_TEAMS = ['1팀', '2팀', '온라인', '기타'];
+const PLAN_KEY = 'iconix_inventory_plans_v1';
+let plans = {};
+try { plans = JSON.parse(localStorage.getItem(PLAN_KEY) || '{}') || {}; } catch (e) { plans = {}; }
+function getPlan(code, team) { return (plans[code] && plans[code][team]) || ''; }
+function setPlan(code, team, text) {
+  const t = String(text || '').slice(0, 100).trim();
+  if (!plans[code]) plans[code] = {};
+  if (t) plans[code][team] = t; else delete plans[code][team];
+  if (!Object.keys(plans[code]).length) delete plans[code];
+  try { localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); } catch (e) { /* 저장 불가 환경 */ }
+}
+function csvCell(v) { const s = String(v || '').replace(/[\r\n]+/g, ' '); return `"${s.replace(/"/g, '""')}"`; }
+function renderPlanButtons(it) {
+  return `<div class="plan-group">${PLAN_TEAMS.map(t => {
+    const v = getPlan(it.code, t);
+    return `<button type="button" class="plan-btn${v ? ' has' : ''}" data-code="${it.code}" data-team="${t}" title="${v ? escapeHtml(t + ': ' + v) : t + ' 소진계획 입력'}">${t}</button>`;
+  }).join('')}</div>`;
+}
+const planEdit = { code: null, team: null, btn: null };
+function refreshPlanButtons(code, team) {
+  document.querySelectorAll(`.plan-btn[data-code="${code}"][data-team="${team}"]`).forEach(b => {
+    const v = getPlan(code, team);
+    b.classList.toggle('has', !!v);
+    b.title = v ? `${team}: ${v}` : `${team} 소진계획 입력`;
+  });
+}
+function savePlanAndClose() {
+  const pop = document.getElementById('planPop');
+  if (!pop.classList.contains('open') || !planEdit.code) return;
+  setPlan(planEdit.code, planEdit.team, document.getElementById('planPopText').value);
+  refreshPlanButtons(planEdit.code, planEdit.team);
+  if (planEdit.btn) planEdit.btn.classList.remove('editing');
+  pop.classList.remove('open');
+  planEdit.code = planEdit.team = planEdit.btn = null;
+}
+function openPlanPopup(btn) {
+  savePlanAndClose();
+  const code = btn.dataset.code, team = btn.dataset.team;
+  const it = state.rawItems.find(x => x.code === code);
+  Object.assign(planEdit, { code, team, btn });
+  btn.classList.add('editing');
+  document.getElementById('planPopTeam').textContent = team;
+  document.getElementById('planPopItem').textContent = it ? `${code} · ${it.name}` : code;
+  const ta = document.getElementById('planPopText');
+  ta.value = getPlan(code, team);
+  document.getElementById('planPopCount').textContent = `${ta.value.length} / 100`;
+  placeBelow(document.getElementById('planPop'), btn, true);
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function bindEvents() {
+  /* 기간 게이지: 리스크 매트릭스 */
+  const c4Wrap = document.getElementById('c4GaugeWrap');
+  gauges.c4 = createMonthGauge(c4Wrap, state.c4Months, r => { state.c4Months = r; syncPeriodLabels(); renderChart4RiskScatter(getGlobalFilteredItems()); });
+  document.getElementById('btnC4Period').addEventListener('click', () => { c4Wrap.style.display = c4Wrap.style.display === 'none' ? 'block' : 'none'; });
+
+  /* 기간 게이지: SKU 표 최종입고 헤더 */
+  const mPop = document.getElementById('tableMonthPop'), thM = document.getElementById('thMonths');
+  gauges.table = createMonthGauge(document.getElementById('tableGaugeWrap'), state.tableMonths, r => { state.tableMonths = r; state.page = 1; syncPeriodLabels(); renderDataTable(getGlobalFilteredItems()); });
+  thM.addEventListener('click', e => { e.stopPropagation(); if (mPop.classList.contains('open')) mPop.classList.remove('open'); else placeBelow(mPop, thM, true); });
+  document.getElementById('btnMonthPopClose').addEventListener('click', () => mPop.classList.remove('open'));
+  mPop.querySelectorAll('[data-msort]').forEach(b => b.addEventListener('click', () => {
+    state.sortKey = 'months'; state.sortDir = b.dataset.msort; clearPlanSort();
+    document.querySelectorAll('#skuTable thead .sort-ind').forEach(s => s.textContent = '');
+    thM.querySelector('.sort-ind').textContent = state.sortDir === 'asc' ? '▲' : '▼';
+    renderDataTable(getGlobalFilteredItems());
+  }));
+
+  /* 소진계획 팝업 */
+  document.getElementById('skuTableBody').addEventListener('click', e => {
+    const b = e.target.closest('.plan-btn'); if (b) { e.stopPropagation(); openPlanPopup(b); }
+  });
+  document.getElementById('planPopClose').addEventListener('click', savePlanAndClose);
+  document.getElementById('planPopSave').addEventListener('click', savePlanAndClose);
+  document.getElementById('planPopText').addEventListener('input', e => { document.getElementById('planPopCount').textContent = `${e.target.value.length} / 100`; });
+  document.addEventListener('pointerdown', e => {
+    const pp = document.getElementById('planPop');
+    if (pp.classList.contains('open') && !pp.contains(e.target) && !e.target.closest('.plan-btn')) savePlanAndClose();
+    if (mPop.classList.contains('open') && !mPop.contains(e.target) && !thM.contains(e.target)) mPop.classList.remove('open');
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { savePlanAndClose(); mPop.classList.remove('open'); } });
+  window.addEventListener('beforeunload', savePlanAndClose);
+
+  /* 소진계획 팀 정렬 */
+  const planSortBtns = document.querySelectorAll('#planSortGroup button');
+  planSortBtns.forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const t = b.dataset.team;
+    if (state.sortKey === 'plan' && state.planTeam === t) { state.sortKey = 'amt'; state.sortDir = 'desc'; state.planTeam = null; }
+    else { state.sortKey = 'plan'; state.sortDir = 'desc'; state.planTeam = t; }
+    planSortBtns.forEach(x => x.classList.toggle('on', x.dataset.team === state.planTeam));
+    document.querySelectorAll('#skuTable thead .sort-ind').forEach(si => si.textContent = '');
+    if (state.sortKey === 'amt') document.querySelector('#skuTable th[data-sort="amt"] .sort-ind').textContent = '▼';
+    state.page = 1; renderDataTable(getGlobalFilteredItems());
+  }));
+
+  document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleLocalFile(e.target.files[0]); e.target.value = ''; });
+  const cmpInput = document.getElementById('compareFileInput');
+  document.getElementById('btnSiderCompare').addEventListener('click', () => cmpInput.click());
+  document.getElementById('btnReuploadCompare').addEventListener('click', () => cmpInput.click());
+  cmpInput.addEventListener('change', e => { if (e.target.files[0]) handleCompareFile(e.target.files[0]); });
+  document.getElementById('btnCloseComparePanel').addEventListener('click', clearCompareMode);
+
+  const dz = document.getElementById('dropZone');
+  ['dragenter', 'dragover'].forEach(n => window.addEventListener(n, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(n => window.addEventListener(n, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+  window.addEventListener('drop', e => { if (e.target.closest && e.target.closest('#chatPanel')) return; if (e.dataTransfer && e.dataTransfer.files[0]) handleLocalFile(e.dataTransfer.files[0]); });
+
+  document.querySelectorAll('#segScope button').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('#segScope button').forEach(b => b.classList.toggle('active', b === btn));
+    state.scope = btn.dataset.val; state.page = 1; renderAll();
+  }));
+  document.getElementById('selGlobalIp').addEventListener('change', e => { state.globalIp = e.target.value; state.page = 1; renderAll(); });
+  document.getElementById('inpGlobalSearch').addEventListener('input', e => { state.globalSearch = e.target.value; state.page = 1; renderAll(); });
+
+  setupMultiButtonGroup('c5MidGroup', state.c5Mids, () => renderChart5TopPrefix(getGlobalFilteredItems()));
+  setupMultiButtonGroup('c5IpGroup', state.c5Ips, () => renderChart5TopPrefix(getGlobalFilteredItems()));
+
+  const c4Btns = document.querySelectorAll('#c4GradeGroup .multi-btn');
+  const syncC4 = () => c4Btns.forEach(b => {
+    const v = b.dataset.val;
+    b.classList.remove('active', 'active-danger', 'active-warning', 'active-success');
+    if (v === 'ALL') { if (state.c4Grades.size === 3) b.classList.add('active'); }
+    else if (state.c4Grades.has(v)) b.classList.add(v === '악성' ? 'active-danger' : v === '부진' ? 'active-warning' : 'active-success');
+  });
+  c4Btns.forEach(btn => btn.addEventListener('click', () => {
+    const v = btn.dataset.val;
+    if (v === 'ALL') state.c4Grades = new Set(STOCK_GRADES);
+    else if (state.c4Grades.has(v)) { if (state.c4Grades.size > 1) state.c4Grades.delete(v); }
+    else state.c4Grades.add(v);
+    syncC4(); renderChart4RiskScatter(getGlobalFilteredItems());
+  }));
+
+  document.querySelectorAll('#tableQuickTabs .quick-tab').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('#tableQuickTabs .quick-tab').forEach(b => b.classList.toggle('active', b === btn));
+    state.quickTab = btn.dataset.qtab; state.page = 1; renderDataTable(getGlobalFilteredItems());
+  }));
+  document.getElementById('selTableCodeMid').addEventListener('change', e => { state.tableCodeMid = e.target.value; state.page = 1; renderDataTable(getGlobalFilteredItems()); });
+
+  const ddBtn = document.getElementById('btnTableIpDropdown'), ddMenu = document.getElementById('menuTableIpDropdown');
+  const allChk = ddMenu.querySelector('input[value="ALL"]'), ipChks = ddMenu.querySelectorAll('.ip-chk');
+  ddBtn.addEventListener('click', e => { e.stopPropagation(); ddMenu.classList.toggle('open'); });
+  const updIpLbl = () => {
+    const lbl = document.getElementById('lblTableIpSelected'), n = state.tableIps.size;
+    lbl.textContent = n === IP_PRIORITY_LIST.length ? '전체' : n <= 2 ? Array.from(state.tableIps).join(', ') : `${Array.from(state.tableIps)[0]} 외 ${n - 1}`;
+  };
+  allChk.addEventListener('change', () => {
+    state.tableIps = new Set(IP_PRIORITY_LIST); ipChks.forEach(c => c.checked = true); allChk.checked = true;
+    updIpLbl(); state.page = 1; renderDataTable(getGlobalFilteredItems());
+  });
+  ipChks.forEach(chk => chk.addEventListener('change', () => {
+    state.tableIps.clear(); ipChks.forEach(c => { if (c.checked) state.tableIps.add(c.value); });
+    if (!state.tableIps.size) { state.tableIps = new Set(IP_PRIORITY_LIST); ipChks.forEach(c => c.checked = true); }
+    allChk.checked = state.tableIps.size === IP_PRIORITY_LIST.length;
+    updIpLbl(); state.page = 1; renderDataTable(getGlobalFilteredItems());
+  }));
+
+  setupMultiButtonGroup('tableGradeGroup', state.tableGrades, () => { state.page = 1; renderDataTable(getGlobalFilteredItems()); });
+
+  const inp = document.getElementById('inpTableSearch'), sBox = document.getElementById('tableSuggestBox');
+  inp.addEventListener('focus', () => updateSearchSuggestions(inp.value));
+  inp.addEventListener('input', e => { state.tableSearch = e.target.value; state.page = 1; updateSearchSuggestions(e.target.value); renderDataTable(getGlobalFilteredItems()); });
+  window.addEventListener('click', e => {
+    if (!document.getElementById('tableIpDropdown').contains(e.target)) ddMenu.classList.remove('open');
+    if (!document.getElementById('tableSearchWrap').contains(e.target)) sBox.classList.remove('open');
+  });
+
+  document.getElementById('btnResetFilters').addEventListener('click', () => {
+    Object.assign(state, { scope: 'sales', globalIp: 'ALL', globalSearch: '', quickTab: 'ALL', tableCodeMid: 'ALL', tableSearch: '', page: 1,
+      c4Grades: new Set(STOCK_GRADES), tableIps: new Set(IP_PRIORITY_LIST), c4Months: { lo: 1, hi: 61 }, tableMonths: { lo: 1, hi: 61 } });
+    gauges.c4 && gauges.c4.set(state.c4Months); gauges.table && gauges.table.set(state.tableMonths); syncPeriodLabels();
+    state.c5Mids.clear(); state.c5Ips.clear(); state.tableGrades.clear();
+    document.querySelectorAll('#segScope button').forEach(b => b.classList.toggle('active', b.dataset.val === 'sales'));
+    document.getElementById('selGlobalIp').value = 'ALL';
+    document.getElementById('inpGlobalSearch').value = '';
+    document.getElementById('selTableCodeMid').value = 'ALL';
+    inp.value = '';
+    ['c5MidGroup', 'c5IpGroup', 'tableGradeGroup'].forEach(id => document.querySelectorAll(`#${id} .multi-btn`).forEach(b => b.classList.toggle('active', b.dataset.val === 'ALL')));
+    syncC4(); allChk.checked = true; ipChks.forEach(c => c.checked = true); updIpLbl();
+    document.querySelectorAll('#tableQuickTabs .quick-tab').forEach(b => b.classList.toggle('active', b.dataset.qtab === 'ALL'));
+    renderAll();
+  });
+
+  document.querySelectorAll('#skuTable thead th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (state.sortKey === k) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc'; else { state.sortKey = k; state.sortDir = 'desc'; }
+    clearPlanSort();
+    document.querySelectorAll('#skuTable thead .sort-ind').forEach(s => s.textContent = '');
+    th.querySelector('.sort-ind').textContent = state.sortDir === 'asc' ? '▲' : '▼';
+    renderDataTable(getGlobalFilteredItems());
+  }));
+  document.getElementById('selPageSize').addEventListener('change', e => { state.pageSize = Number(e.target.value); state.page = 1; renderDataTable(getGlobalFilteredItems()); });
+  document.getElementById('btnPrevPage').addEventListener('click', () => { if (state.page > 1) { state.page--; renderDataTable(getGlobalFilteredItems()); } });
+  document.getElementById('btnNextPage').addEventListener('click', () => { state.page++; renderDataTable(getGlobalFilteredItems()); });
+
+  document.getElementById('btnExportCsv').addEventListener('click', exportFilteredToCsv);
+
+  const toast = document.getElementById('toastTurnover');
+  document.querySelectorAll('.btn-turnover').forEach(b => b.addEventListener('click', () => {
+    toast.classList.add('show');
+    if (state.toastTimer) clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
+  }));
+  document.getElementById('toastCloseBtn').addEventListener('click', () => { toast.classList.remove('show'); if (state.toastTimer) clearTimeout(state.toastTimer); });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  bindEvents();
+  const pill = document.getElementById('envStatusPill');
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    fetchExcelFromServer();
+    scheduleMidnightRefresh();
+  } else {
+    pill.className = 'status-pill file'; pill.textContent = '로컬 파일(file://) 모드';
+    showUploadZone('로컬 파일(file://) 모드로 실행 중입니다', '브라우저 보안 정책상 file:// 경로에서는 자동 불러오기가 제한됩니다. 상단 [기준 파일 선택] 버튼을 누르거나 재고등급현황 작성표(data.xlsx) 파일을 이 화면에 드래그 & 드롭하세요.');
+  }
+});
+</script>
+<!-- ======================= 톡! 해요 (채팅) ======================= -->
+<button type="button" class="chat-fab" id="chatFab" aria-label="채팅 열기">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>
+  톡! 해요
+  <span class="chat-unread" id="chatUnread" hidden title="읽지 않은 메시지">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v12H9l-5 4z"/></svg><b id="chatUnreadCount">0</b>
+  </span>
+</button>
+
+<section class="chat-panel" id="chatPanel" aria-label="톡! 해요 채팅" aria-hidden="true">
+  <div class="chat-head">
+    <div>
+      <div class="t">톡! 해요</div>
+      <div class="s"><i id="chatDot"></i><span id="chatOnline">연결 중</span><span id="chatMe"></span></div>
+    </div>
+    <button type="button" class="chat-close" id="chatClose" aria-label="채팅 닫기">✕</button>
+  </div>
+  <div class="chat-list" id="chatList"><div class="chat-empty">대화를 불러오는 중입니다.</div></div>
+  <div class="chat-status" id="chatStatus" hidden></div>
+  <div class="chat-pending" id="chatPending" hidden>
+    <div class="thumb" id="chatPendingThumb"></div>
+    <div class="info"><b id="chatPendingName"></b><small id="chatPendingSize"></small></div>
+    <button type="button" class="btn btn-sm" id="chatPendingCancel">취소</button>
+    <button type="button" class="btn btn-sm btn-primary" id="chatPendingUpload">업로드</button>
+  </div>
+  <div class="chat-foot">
+    <button type="button" class="chat-attach" id="chatAttach" aria-label="파일 첨부" title="이미지·파일 첨부 (최대 10MB)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M20 11.5l-7.8 7.8a5 5 0 01-7.1-7.1l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.7 1.7 0 01-2.4-2.4l7.8-7.8"/></svg>
+    </button>
+    <input type="file" id="chatFileInput" style="display:none;" />
+    <textarea class="chat-input" id="chatInput" rows="1" maxlength="1000" placeholder="메시지 입력" title="Enter 전송 · Shift+Enter 줄바꿈"></textarea>
+    <button type="button" class="chat-send" id="chatSend">전송</button>
+  </div>
+  <div class="chat-nick" id="chatNick" hidden>
+    <h4>반갑습니다.</h4>
+    <p>채팅에 표시될 이름을 한 번만 설정합니다. 이 기기에서는 다음부터 자동으로 사용됩니다.</p>
+    <input type="text" class="input" id="chatNickInput" maxlength="20" placeholder="성함을 입력하세요" />
+    <button type="button" class="btn btn-primary" id="chatNickSave">시작하기</button>
+  </div>
+</section>
+
+<script>
+/* ==========================================================================
+   톡! 해요 — 실시간 채팅 (server.js / chat.js 의 Socket.IO 서버와 연결)
+   ========================================================================== */
+(function () {
+  const MAX_FILE = 10 * 1024 * 1024;
+  const LS = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  const $ = id => document.getElementById(id);
+  const C = {
+    socket: null, open: false, msgs: [], online: 0, connected: false, pending: null, sending: false,
+    nick: LS.get('iconix_chat_nick') || '',
+    clientId: LS.get('iconix_chat_client') || (Math.random().toString(36).slice(2) + Date.now().toString(36)),
+    lastRead: Number(LS.get('iconix_chat_lastread') || 0),
+    hasLastRead: LS.get('iconix_chat_lastread') !== null
+  };
+  LS.set('iconix_chat_client', C.clientId);
+
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const fmtSize = n => n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+  const fmtTime = ts => { const d = new Date(ts); return `${d.getHours() < 12 ? '오전' : '오후'} ${((d.getHours() + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const fmtDay = ts => { const d = new Date(ts); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} (${'일월화수목금토'[d.getDay()]})`; };
+  const dayKey = ts => new Date(ts).toDateString();
+
+  function setStatus(msg) { const el = $('chatStatus'); el.hidden = !msg; el.textContent = msg || ''; }
+  function setOnline() {
+    $('chatDot').classList.toggle('on', C.connected);
+    $('chatOnline').textContent = C.connected ? `접속 ${C.online}명` : '연결 안 됨';
+    $('chatMe').textContent = C.nick ? `· ${C.nick}` : '';
+    $('chatSend').disabled = !C.connected;
+  }
+  function unreadCount() { return C.msgs.filter(m => m.id > C.lastRead && m.clientId !== C.clientId).length; }
+  function updateBadge() {
+    const n = C.open ? 0 : unreadCount();
+    $('chatUnread').hidden = n === 0;
+    $('chatUnreadCount').textContent = n > 99 ? '99+' : n;
+  }
+  function markRead() {
+    const max = C.msgs.reduce((a, m) => Math.max(a, m.id), C.lastRead);
+    C.lastRead = max; C.hasLastRead = true; LS.set('iconix_chat_lastread', String(max)); updateBadge();
+  }
+
+  function msgHtml(m) {
+    const me = m.clientId === C.clientId;
+    let body = '';
+    if (m.file) {
+      body = m.file.isImage
+        ? `<a href="${esc(m.file.url)}" target="_blank" rel="noopener"><img class="chat-img" src="${esc(m.file.url)}" alt="${esc(m.file.name)}" loading="lazy"></a>`
+        : `<a class="chat-file" href="${esc(m.file.url)}" download="${esc(m.file.name)}"><span>📎</span><b>${esc(m.file.name)}</b><small>${fmtSize(m.file.size)}</small></a>`;
+    }
+    if (m.text) body += `<div class="bubble"${m.file ? ' style="margin-top:4px;"' : ''}>${esc(m.text)}</div>`;
+    return `<div class="chat-msg${me ? ' me' : ''}" data-id="${m.id}">
+      ${me ? '' : `<div class="who">${esc(m.nick)}</div>`}
+      <div class="row"><div>${body}</div><span class="time">${fmtTime(m.ts)}</span></div>
+    </div>`;
+  }
+  function renderList(scrollToUnread) {
+    const list = $('chatList');
+    if (!C.msgs.length) { list.innerHTML = `<div class="chat-empty">아직 대화가 없습니다.<br>첫 메시지를 남겨보세요.</div>`; return; }
+    const firstUnread = C.msgs.find(m => m.id > C.lastRead && m.clientId !== C.clientId);
+    let html = '', prevDay = '';
+    C.msgs.forEach(m => {
+      const dk = dayKey(m.ts);
+      if (dk !== prevDay) { html += `<div class="chat-day">${fmtDay(m.ts)}</div>`; prevDay = dk; }
+      if (firstUnread && m.id === firstUnread.id) html += `<div class="chat-divider" id="chatUnreadDivider">여기서부터 읽지 않은 메시지</div>`;
+      html += msgHtml(m);
+    });
+    list.innerHTML = html;
+    const div = $('chatUnreadDivider');
+    if (scrollToUnread && div) list.scrollTop = div.offsetTop - list.offsetTop - 8;
+    else list.scrollTop = list.scrollHeight;
+  }
+  function appendMsg(m) {
+    const list = $('chatList');
+    const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    if (list.querySelector('.chat-empty')) list.innerHTML = '';
+    const last = C.msgs[C.msgs.length - 2];
+    if (!last || dayKey(last.ts) !== dayKey(m.ts)) list.insertAdjacentHTML('beforeend', `<div class="chat-day">${fmtDay(m.ts)}</div>`);
+    list.insertAdjacentHTML('beforeend', msgHtml(m));
+    if (nearBottom || m.clientId === C.clientId) list.scrollTop = list.scrollHeight;
+  }
+
+  /* ---------- 열기 · 닫기 ---------- */
+  function openChat() {
+    if (C.open) return;
+    C.open = true;
+    $('chatPanel').classList.add('open'); $('chatPanel').setAttribute('aria-hidden', 'false');
+    $('chatFab').style.visibility = 'hidden';
+    renderList(true);        // 읽지 않은 첫 메시지부터 노출
+    markRead();
+    if (!C.nick) { $('chatNick').hidden = false; setTimeout(() => $('chatNickInput').focus(), 300); }
+    else setTimeout(() => $('chatInput').focus(), 320);
+  }
+  function closeChat() {
+    if (!C.open) return;
+    C.open = false;
+    $('chatPanel').classList.remove('open'); $('chatPanel').setAttribute('aria-hidden', 'true');
+    $('chatFab').style.visibility = '';
+    updateBadge();
+  }
+
+  /* ---------- 닉네임 ---------- */
+  function saveNick() {
+    const v = $('chatNickInput').value.trim().slice(0, 20);
+    if (!v) { $('chatNickInput').focus(); return; }
+    C.nick = v; LS.set('iconix_chat_nick', v);
+    $('chatNick').hidden = true; setOnline(); $('chatInput').focus();
+  }
+
+  /* ---------- 전송 ---------- */
+  function sendText() {
+    const ta = $('chatInput'); const text = ta.value.trim();
+    if (!text || !C.connected) return;
+    if (!C.nick) { $('chatNick').hidden = false; return; }
+    C.socket.emit('message', { text, nick: C.nick, clientId: C.clientId }, res => {
+      if (!res || !res.ok) setStatus((res && res.error) || '메시지를 보내지 못했습니다.');
+    });
+    ta.value = ''; ta.style.height = '';
+  }
+  function pickFile(file) {
+    if (!file) return;
+    if (file.size > MAX_FILE) { setStatus(`파일은 최대 10MB까지 올릴 수 있습니다. (${fmtSize(file.size)})`); return; }
+    setStatus('');
+    C.pending = file;
+    $('chatPending').hidden = false;
+    $('chatPendingName').textContent = file.name;
+    $('chatPendingSize').textContent = `${fmtSize(file.size)} · 업로드 버튼을 누르면 공유됩니다`;
+    const th = $('chatPendingThumb');
+    if (/^image\/(png|jpeg|gif|webp|bmp)$/.test(file.type)) { th.style.backgroundImage = `url(${URL.createObjectURL(file)})`; th.textContent = ''; }
+    else { th.style.backgroundImage = ''; th.textContent = (file.name.split('.').pop() || 'FILE').slice(0, 4).toUpperCase(); }
+  }
+  function clearPending() { C.pending = null; $('chatPending').hidden = true; $('chatFileInput').value = ''; }
+  async function uploadPending() {
+    if (!C.pending || !C.connected || C.sending) return;
+    if (!C.nick) { $('chatNick').hidden = false; return; }
+    const f = C.pending;
+    C.sending = true; $('chatPendingUpload').disabled = true; $('chatPendingUpload').textContent = '업로드 중';
+    try {
+      const data = await f.arrayBuffer();
+      const text = $('chatInput').value.trim();
+      C.socket.timeout(60000).emit('file', { name: f.name, type: f.type, size: f.size, data, text, nick: C.nick, clientId: C.clientId }, (err, res) => {
+        C.sending = false; $('chatPendingUpload').disabled = false; $('chatPendingUpload').textContent = '업로드';
+        if (err || !res || !res.ok) { setStatus((res && res.error) || '파일 업로드에 실패했습니다.'); return; }
+        clearPending(); $('chatInput').value = '';
+      });
+    } catch (e) {
+      C.sending = false; $('chatPendingUpload').disabled = false; $('chatPendingUpload').textContent = '업로드';
+      setStatus('파일을 읽지 못했습니다.');
+    }
+  }
+
+  /* ---------- 서버 연결 ---------- */
+  function connect() {
+    if (!/^https?:$/.test(location.protocol)) { setStatus('로컬 파일(file://)로 열면 채팅을 쓸 수 없습니다. 서버(server.js) 주소로 접속하세요.'); setOnline(); return; }
+    const s = document.createElement('script');
+    s.src = '/socket.io/socket.io.js';
+    s.onload = () => {
+      const sock = io({ auth: { clientId: C.clientId }, transports: ['websocket', 'polling'] });
+      C.socket = sock;
+      sock.on('connect', () => { C.connected = true; setStatus(''); setOnline(); });
+      sock.on('disconnect', () => { C.connected = false; setOnline(); setStatus('연결이 끊어졌습니다. 다시 연결하는 중…'); });
+      sock.on('connect_error', () => { C.connected = false; setOnline(); setStatus('채팅 서버에 연결할 수 없습니다.'); });
+      sock.on('full', max => { C.connected = false; setOnline(); setStatus(`동시 접속 인원(${max}명)이 가득 찼습니다. 잠시 후 다시 시도해 주세요.`); });
+      sock.on('online', n => { C.online = n; setOnline(); });
+      sock.on('history', list => {
+        C.msgs = Array.isArray(list) ? list : [];
+        if (!C.hasLastRead) markRead();     // 이 기기의 첫 접속: 과거 대화는 읽음 처리
+        if (C.open) { renderList(true); markRead(); } else updateBadge();
+      });
+      sock.on('message', m => {
+        if (C.msgs.some(x => x.id === m.id)) return;
+        C.msgs.push(m);
+        if (C.open) { appendMsg(m); markRead(); } else updateBadge();
+      });
+    };
+    s.onerror = () => { setStatus('채팅 서버(server.js)가 실행 중이 아닙니다. 정적 호스팅에서는 채팅을 쓸 수 없습니다.'); setOnline(); };
+    document.head.appendChild(s);
+  }
+
+  /* ---------- 이벤트 ---------- */
+  $('chatFab').addEventListener('click', e => { e.stopPropagation(); openChat(); });
+  $('chatClose').addEventListener('click', closeChat);
+  document.addEventListener('pointerdown', e => {
+    if (C.open && !$('chatPanel').contains(e.target) && !$('chatFab').contains(e.target)) closeChat();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && C.open) closeChat(); });
+  $('chatNickSave').addEventListener('click', saveNick);
+  $('chatNickInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveNick(); });
+  $('chatSend').addEventListener('click', () => { if (C.pending) uploadPending(); else sendText(); });
+  const ta = $('chatInput');
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (C.pending) uploadPending(); else sendText(); }
+  });
+  ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(96, ta.scrollHeight) + 'px'; });
+  $('chatAttach').addEventListener('click', () => $('chatFileInput').click());
+  $('chatFileInput').addEventListener('change', e => pickFile(e.target.files[0]));
+  $('chatPendingCancel').addEventListener('click', clearPending);
+  $('chatPendingUpload').addEventListener('click', uploadPending);
+  $('chatPanel').addEventListener('dragover', e => e.preventDefault());
+  $('chatPanel').addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files[0]) pickFile(e.dataTransfer.files[0]); });
+
+  setOnline();
+  connect();
+})();
+</script>
+</body>
+</html>
