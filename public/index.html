@@ -488,11 +488,20 @@ a { color: inherit; }
 }
 
 /* Criteria section */
-.criteria-grid { display: grid; grid-template-columns: repeat(3,1fr); border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong); }
+.criteria-grid { display: grid; grid-template-columns: 1.25fr repeat(3,1fr); border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong); }
 .criteria-card { padding: 24px; border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); font-size: 12px; line-height: 1.75; color: var(--text-secondary); }
 .criteria-card h4 { margin: 0 0 14px; font-size: 13px; font-weight: 700; color: #000; display: flex; justify-content: space-between; }
 .criteria-card h4 span { color: var(--text-tertiary); font-size: 10px; letter-spacing: .08em; }
 .criteria-card b { color: #000; }
+.grade-rule .gr-item { padding: 10px 0; border-top: 1px solid var(--border-subtle); }
+.grade-rule .gr-item:first-of-type { padding-top: 0; border-top: 0; }
+.grade-rule .gr-name { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: #000; }
+.grade-rule .gr-name i { width: 10px; height: 10px; flex-shrink: 0; }
+.grade-rule .gr-cond { margin-top: 2px; font-size: 11.5px; color: var(--text-tertiary); }
+.grade-rule ol { margin: 4px 0 0; padding: 0; list-style: none; }
+.grade-rule li { display: flex; gap: 6px; font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+.grade-rule li em { font-style: normal; color: #000; flex-shrink: 0; }
+@media (max-width: 1400px) { .criteria-grid { grid-template-columns: repeat(2, 1fr); } }
 .link-btn { border: 0; background: none; padding: 0; font-weight: 700; color: #000; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 
 /* Toast */
@@ -889,22 +898,45 @@ a { color: inherit; }
       <div><div class="eyebrow">05 · Criteria</div><h2>분류 및 산식 기준</h2><p>참고_재고분류기준 시트 및 대시보드 분류 규칙</p></div>
     </div>
     <div class="criteria-grid">
+      <div class="criteria-card grade-rule">
+        <h4>등급 기준 <span>01</span></h4>
+        <div class="gr-item">
+          <div class="gr-name"><i style="background:var(--grade-dead)"></i>악성 재고</div>
+          <div class="gr-cond">아래 조건 중 하나라도 해당 (OR)</div>
+          <ol>
+            <li><em>①</em><span>최근 18개월 간 입·출고 실적이 전혀 없음</span></li>
+            <li><em>②</em><span>최근 3개월간 입고 실적이 전혀 없음 <b>AND</b> 재고회전율 0.5 미만</span></li>
+          </ol>
+        </div>
+        <div class="gr-item">
+          <div class="gr-name"><i style="background:var(--grade-normal)"></i>정상 재고</div>
+          <div class="gr-cond">아래 조건 중 하나라도 해당 (OR)</div>
+          <ol>
+            <li><em>①</em><span>최근 3개월 이내 정상 입고 발생</span></li>
+            <li><em>②</em><span>재고회전율 1.0 초과</span></li>
+          </ol>
+        </div>
+        <div class="gr-item">
+          <div class="gr-name"><i style="background:var(--grade-slow)"></i>부진 재고</div>
+          <div class="gr-cond">악성 / 정상 재고의 조건에 해당되지 않고, 재고수량이 있는 경우</div>
+        </div>
+      </div>
       <div class="criteria-card">
-        <h4>실질 재고등급 (BJ열) <span>01</span></h4>
+        <h4>실질 재고등급 (BJ열) <span>02</span></h4>
         <b>재고없음</b> 기말재고 0 (결품 · 등급 집계 제외)<br>
         <b>악성</b> 18개월 입·출고 무실적 OR (3개월 무입고 &amp; <button type="button" class="link-btn btn-turnover">회전율</button> &lt; 0.5)<br>
         <b>정상</b> 3개월 이내 입고 OR <button type="button" class="link-btn btn-turnover">회전율</button> &gt; 1.0<br>
         <b>부진</b> 위 조건에 해당하지 않는 재고
       </div>
       <div class="criteria-card">
-        <h4>IP 분류 우선순위 <span>02</span></h4>
+        <h4>IP 분류 우선순위 <span>03</span></h4>
         <b>1단계 품목명</b> 뽀로로 → 타요 → 잔망루피(잔망) → 데코데코 → 해치 → 퍼글러 (해치멀은 기타)<br>
         <b>2단계 캐릭터·라인</b> 포비·크롱·패티 → 뽀로로 / 베이피·벗지·베이비퍼글러·앨리캣츠·핀카 → 퍼글러<br>
         <b>3단계 품목코드</b> PR 뽀로로 · TY 타요 · DC 데코데코 · HC 해치 · FG 퍼글러<br>
         그 외는 <b>기타(나머지)</b>
       </div>
       <div class="criteria-card">
-        <h4>품목코드 · 금액 기준 <span>03</span></h4>
+        <h4>품목코드 · 금액 기준 <span>04</span></h4>
         <b>코드 3·4번째</b> T1 완구 · P1 출판 · L1 굿즈 · T2 수입완구 · 그 외 기타(M·F·X·S 등)<br>
         <b>영업본부</b> 금액 AV열 · 수량 BB열<br>
         <b>전사 합계</b> 금액 AM열 · 수량 AK열 · 단가 AL열<br>
