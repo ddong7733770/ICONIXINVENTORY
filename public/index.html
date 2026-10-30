@@ -111,6 +111,9 @@ a { color: inherit; }
 .nav-links { display: flex; gap: 22px; }
 .nav-links a { color: var(--text-secondary); font-size: 13px; font-weight: 550; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 21px 0 19px; border-bottom: 2px solid transparent; }
 .nav-links a:hover, .nav-links a.active { color: #000; border-bottom-color: #000; }
+.nav-links a.nav-red { color: var(--hc-red); }
+.nav-links a.nav-red:hover, .nav-links a.nav-red.active { color: var(--hc-red); border-bottom-color: var(--hc-red); }
+.nav-links a.nav-red .nav-count { background: var(--hc-red); }
 .nav-count { font-size: 10px; font-weight: 700; background: #000; color: #fff; padding: 1px 5px; }
 .nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
@@ -367,12 +370,12 @@ a { color: inherit; }
 .th-gauge .flt { display: inline-block; margin-left: 4px; padding: 0 4px; background: #000; color: #fff; font-size: 9px; letter-spacing: 0; }
 
 /* 소진계획 */
-.plan-th { white-space: nowrap; }
-.plan-sort { display: inline-flex; margin-left: 6px; border: 1px solid var(--border-default); vertical-align: middle; }
-.plan-sort button { height: 20px; padding: 0 5px; border: 0; background: #fff; font-size: 9.5px; font-weight: 500; color: var(--text-tertiary); cursor: pointer; letter-spacing: 0; }
-.plan-sort button + button { border-left: 1px solid var(--border-default); }
-.plan-sort button:hover { color: #000; }
-.plan-sort button.on { background: var(--hc-red); color: #fff; }
+.tbl th.plan-th { white-space: nowrap; color: #4D17F5; }
+.plan-sort { display: inline-flex; margin-left: 6px; border: 1px solid #4D17F5; vertical-align: middle; }
+.plan-sort button { height: 20px; padding: 0 5px; border: 0; background: #fff; font-size: 9.5px; font-weight: 500; color: #4D17F5; cursor: pointer; letter-spacing: 0; }
+.plan-sort button + button { border-left: 1px solid #4D17F5; }
+.plan-sort button:hover { background: #F1ECFE; color: #4D17F5; }
+.plan-sort button.on { background: #4D17F5; color: #fff; }
 .plan-bulk-btn { height: 22px; margin-left: 4px; padding: 0 6px; border: 1px solid var(--hc-red); background: #fff; color: var(--hc-red); font-size: 9.5px; font-weight: 500; letter-spacing: 0; cursor: pointer; vertical-align: middle; }
 .plan-bulk-btn:hover, .plan-bulk-btn.on { background: var(--hc-red); color: #fff; }
 .plan-bulk-pop { position: absolute; z-index: 70; width: 260px; background: #fff; border: 1px solid #000; box-shadow: var(--shadow-lg); padding: 16px; display: none; }
@@ -555,7 +558,7 @@ a { color: inherit; }
       <a href="#sec-kpi">KPI 요약</a>
       <a href="#sec-row2">IP · 등급</a>
       <a href="#sec-row3">품목군 · 리스크</a>
-      <a href="#sec-row4">SKU 명세 <span class="nav-count" id="navSkuCount">-</span></a>
+      <a href="#sec-row4" class="nav-red">품목관리 <span class="nav-count" id="navSkuCount">-</span></a>
       <a href="#sec-criteria">분류 기준</a>
     </div>
     <div class="nav-right">
@@ -780,7 +783,7 @@ a { color: inherit; }
   <!-- ======================= SKU Table ======================= -->
   <section class="section" id="sec-row4">
     <div class="section-head">
-      <div><div class="eyebrow">04 · SKU</div><h2>영업본부 중점 관리 SKU</h2><p>품목코드 · IP · 실질 재고등급 · 검색 조건별 명세</p></div>
+      <div><div class="eyebrow">04 · SKU</div><h2 style="color:var(--hc-red);">주요 재고 관리</h2><p>품목코드 · IP · 실질 재고등급 · 검색 조건별 명세</p></div>
       <button type="button" id="btnExportCsv" class="btn btn-sm">현재 목록 CSV 다운로드</button>
     </div>
 
