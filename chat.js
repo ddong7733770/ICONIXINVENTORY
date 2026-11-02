@@ -9,6 +9,7 @@
  * - 텍스트·닉네임·소진계획 메모·이미지는 store(MongoDB Atlas)에 영구 저장
  * - 이미지 외 파일(엑셀·PDF 등)은 서버 디스크에 임시 보관 (Render 무료 플랜은 재시작 시 삭제)
  * - 닉네임 변경(과거 메시지 이름도 함께 변경), 본인 메시지 삭제, 팀별 소진계획 일괄삭제
+ * - 소진계획 = { text(메모), qty(소진 수량), by, ts }
  */
 const fs = require('fs');
 const path = require('path');
@@ -25,6 +26,7 @@ const HISTORY_LIMIT = 500;
 const IMAGE_MIME = /^image\/(png|jpeg|gif|webp)$/i;
 const PLAN_TEAMS = ['1팀', '2팀', '온라인', '기타'];
 const PLAN_MAX = 100;
+const normQty = v => { const n = Math.round(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, 99999999) : 0; };
 
 module.exports = function attachChat(httpServer, app, opts) {
   const { store, initial } = opts;
@@ -157,12 +159,12 @@ module.exports = function attachChat(httpServer, app, opts) {
     socket.on('plan:set', async (p, ack = () => {}) => {
       const code = clean(p && p.code, 40), team = clean(p && p.team, 10);
       if (!validCode(code) || !PLAN_TEAMS.includes(team)) return ack({ ok: false, error: '잘못된 요청입니다.' });
-      const text = clean(p.text, PLAN_MAX), by = clean(p.by, MAX_NICK) || '익명', ts = Date.now();
-      const entry = text ? { text, by, ts } : null;
+      const text = clean(p.text, PLAN_MAX), qty = normQty(p.qty), by = clean(p.by, MAX_NICK) || '익명', ts = Date.now();
+      const entry = (text || qty) ? { text, qty, by, ts } : null;
       try {
         await store.setPlan(code, team, entry);
         applyPlan(code, team, entry);
-        io.emit('plan', { code, team, text, by, ts });
+        io.emit('plan', { code, team, text, qty, by, ts });
         ack({ ok: true });
       } catch (e) { fail(ack, e, '소진계획을 저장하지 못했습니다.'); }
     });
@@ -184,11 +186,11 @@ module.exports = function attachChat(httpServer, app, opts) {
         for (const it of items) {
           const code = clean(it && it.code, 40), team = clean(it && it.team, 10);
           if (!validCode(code) || !PLAN_TEAMS.includes(team)) continue;
-          const text = clean(it.text, PLAN_MAX), ts = Date.now();
-          const entry = text ? { text, by, ts } : null;
+          const text = clean(it.text, PLAN_MAX), qty = normQty(it.qty), ts = Date.now();
+          const entry = (text || qty) ? { text, qty, by, ts } : null;
           await store.setPlan(code, team, entry);
           applyPlan(code, team, entry);
-          io.emit('plan', { code, team, text, by, ts });
+          io.emit('plan', { code, team, text, qty, by, ts });
         }
         ack({ ok: true });
       } catch (e) { fail(ack, e, '소진계획을 저장하지 못했습니다.'); }

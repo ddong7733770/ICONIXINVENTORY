@@ -42,7 +42,7 @@ class MongoStore {
     const plans = {};
     for (const p of await this.plans.find({}).toArray()) {
       if (!plans[p.code]) plans[p.code] = {};
-      plans[p.code][p.team] = { text: p.text, by: p.by, ts: p.ts };
+      plans[p.code][p.team] = { text: p.text || '', qty: p.qty || 0, by: p.by, ts: p.ts };
     }
     return { history, plans };
   }
