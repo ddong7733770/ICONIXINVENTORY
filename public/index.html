@@ -410,6 +410,21 @@ a { color: inherit; }
 .plan-pop textarea:focus { border-bottom-color: #000; }
 .plan-pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
 .plan-pop-count { font-size: 11px; color: var(--text-tertiary); }
+.plan-qty { margin-top: 14px; padding: 12px; background: var(--bg-subtle); }
+.plan-qty label { display: block; font-size: 11px; font-weight: 600; color: #000; letter-spacing: .02em; }
+.plan-qty-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.plan-qty-row input { flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; font-size: 18px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.plan-qty-row input::-webkit-inner-spin-button { opacity: .4; }
+.plan-qty-row span { font-size: 13px; color: var(--text-secondary); }
+.plan-qty-hint { margin-top: 6px; font-size: 11px; color: var(--text-tertiary); line-height: 1.5; }
+.plan-qty-hint b { color: #C5650C; font-weight: 600; }
+.plan-qty-hint b.neg { color: var(--hc-red); }
+.tbl th.remain-th { color: #C5650C; }
+.remain-cell { white-space: nowrap; }
+.remain-val { color: #C5650C; font-weight: 600; }
+.remain-val.neg { color: #C5650C; }
+.remain-val.neg::before { content: "▼ "; font-size: 9px; color: var(--hc-red); }
+.remain-sub { display: block; font-size: 10px; color: var(--text-tertiary); font-weight: 400; }
 .plan-pop-meta { margin-top: 2px; font-size: 10.5px; color: var(--text-tertiary); }
 .plan-pop-meta:empty { display: none; }
 
@@ -876,6 +891,7 @@ a { color: inherit; }
             <th data-sort="gradeBJ">등급(BJ) <span class="sort-ind"></span></th>
             <th id="thMonths" class="th-gauge" title="클릭하여 경과개월 범위 선택">최종입고 (경과월) <span class="sort-ind"></span><span id="thMonthsFlt"></span> <span style="font-size:9px;">▾</span></th>
             <th class="plan-th">소진계획 <span class="plan-sort" id="planSortGroup"><button type="button" data-team="1팀">1팀</button><button type="button" data-team="2팀">2팀</button><button type="button" data-team="온라인">온라인</button><button type="button" data-team="기타">기타</button></span><button type="button" class="plan-bulk-btn" id="btnPlanBulk" title="팀별 소진계획 일괄삭제">일괄삭제</button></th>
+            <th data-sort="remain" class="num remain-th" title="영업본부 수량 − 1팀·2팀·온라인·기타 소진 수량 합계 (가상 계산 값)">예상 잔여 수량 <span class="sort-ind"></span></th>
           </tr>
         </thead>
         <tbody id="skuTableBody"></tbody>
@@ -982,6 +998,11 @@ a { color: inherit; }
   <div class="plan-pop-head">
     <div style="min-width:0;"><div class="plan-pop-team" id="planPopTeam">1팀</div><div class="plan-pop-item" id="planPopItem"></div><div class="plan-pop-meta" id="planPopMeta"></div></div>
     <button type="button" class="plan-pop-close" id="planPopClose" aria-label="닫기">✕</button>
+  </div>
+  <div class="plan-qty">
+    <label for="planPopQty">소진 수량</label>
+    <div class="plan-qty-row"><input type="number" id="planPopQty" class="input" min="0" step="1" inputmode="numeric" placeholder="0" /><span>개</span></div>
+    <div class="plan-qty-hint" id="planPopQtyHint"></div>
   </div>
   <textarea id="planPopText" maxlength="100" placeholder="소진계획을 입력하세요 (최대 100자)"></textarea>
   <div class="plan-pop-foot">
@@ -1812,7 +1833,8 @@ function getTableItems(globalFiltered) {
       case 'turnover': return (a.turnover - b.turnover) * dir;
       case 'gradeBJ': return a.gradeBJ.localeCompare(b.gradeBJ, 'ko') * dir;
       case 'months': return (a.months - b.months) * dir;
-      case 'plan': { const pa = getPlan(a.code, state.planTeam) ? 1 : 0, pb = getPlan(b.code, state.planTeam) ? 1 : 0;
+      case 'remain': return (remainQty(a) - remainQty(b)) * dir;
+      case 'plan': { const pa = hasPlan(a.code, state.planTeam) ? 1 : 0, pb = hasPlan(b.code, state.planTeam) ? 1 : 0;
         return (pb - pa) || (getItemAmt(b) - getItemAmt(a)); }
       default: return 0;
     }
@@ -1848,7 +1870,7 @@ function renderDataTable(globalFiltered) {
   document.getElementById('btnNextPage').disabled = state.page >= pages;
 
   const tbody = document.getElementById('skuTableBody');
-  if (!slice.length) { tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text-tertiary);">조건에 해당하는 품목이 없습니다.</td></tr>`; return; }
+  if (!slice.length) { tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-tertiary);">조건에 해당하는 품목이 없습니다.</td></tr>`; return; }
 
   tbody.innerHTML = slice.map(it => {
     const q = getItemQty(it), a = getItemAmt(it);
@@ -1867,6 +1889,7 @@ function renderDataTable(globalFiltered) {
       <td>${renderGradeTag(it)}</td>
       <td style="white-space:nowrap;">${dateCell}</td>
       <td>${renderPlanButtons(it)}</td>
+      <td class="num remain-cell" data-code="${it.code}">${renderRemainCell(it)}</td>
     </tr>`;
   }).join('');
 }
@@ -1989,13 +2012,15 @@ function exportFilteredToCsv() {
   const { list } = getTableItems(getGlobalFilteredItems());
   if (!list.length) return;
   const isSales = state.scope === 'sales';
-  const headers = ['품목코드', '코드분류', 'IP', '품목명', isSales ? '영업본부수량' : '전사기말수량', '기말단가', isSales ? '영업본부금액' : '전사기말금액', '재고회전율', '등급(BJ)', '최종입고일', '경과개월', ...PLAN_TEAMS.map(t => '소진계획_' + t)];
+  const headers = ['품목코드', '코드분류', 'IP', '품목명', isSales ? '영업본부수량' : '전사기말수량', '기말단가', isSales ? '영업본부금액' : '전사기말금액', '재고회전율', '등급(BJ)', '최종입고일', '경과개월', ...PLAN_TEAMS.map(t => '소진수량_' + t), ...PLAN_TEAMS.map(t => '소진계획_' + t), '예상잔여수량(영업본부 기준)'];
   const rows = [headers.join(',')];
   list.forEach(it => rows.push([
     it.code, it.codeMid, it.ip, `"${it.name.replace(/"/g, '""')}"`,
     Math.round(getItemQty(it)), Math.round(it.unitPrice), Math.round(getItemAmt(it)),
     it.turnover, hasStock(it) ? it.gradeBJ : '재고없음', it.isMissingDate ? '입고일미상' : (it.lastInDate || ''), it.months,
-    ...PLAN_TEAMS.map(t => csvCell(getPlan(it.code, t)))
+    ...PLAN_TEAMS.map(t => getPlanQty(it.code, t)),
+    ...PLAN_TEAMS.map(t => csvCell(getPlan(it.code, t))),
+    remainQty(it)
   ].join(',')));
   const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
@@ -2130,36 +2155,41 @@ try {
 } catch (e) {}
 
 function planEntry(code, team) { return (plans[code] && plans[code][team]) || null; }
-function getPlan(code, team) { const e = planEntry(code, team); return e ? e.text : ''; }
+function getPlan(code, team) { const e = planEntry(code, team); return e ? (e.text || '') : ''; }
+function getPlanQty(code, team) { const e = planEntry(code, team); return e ? Math.max(0, Math.round(Number(e.qty) || 0)) : 0; }
+function hasPlan(code, team) { return !!getPlan(code, team) || getPlanQty(code, team) > 0; }
+function planQtySum(code) { return PLAN_TEAMS.reduce((s, t) => s + getPlanQty(code, t), 0); }
+/* 예상 잔여 수량 = 영업본부 수량 − 4개 팀 소진 수량 합계 (가상 계산, 원본 데이터는 변경하지 않음) */
+function remainQty(it) { return Math.round(it.qtySales) - planQtySum(it.code); }
+function normQty(v) { const n = Math.round(Number(String(v ?? '').replace(/,/g, ''))); return Number.isFinite(n) && n > 0 ? Math.min(n, 99999999) : 0; }
+function normPending(v) { return typeof v === 'string' ? { text: v, qty: 0 } : { text: (v && v.text) || '', qty: normQty(v && v.qty) }; }
 function planNick() { return lsGet('iconix_chat_nick') || '익명'; }
 function fmtPlanTs(ts) { const d = new Date(ts); return `${d.getMonth() + 1}.${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 function planTitle(code, team) {
   const e = planEntry(code, team);
-  if (!e || !e.text) return `${team} 소진계획 입력`;
-  return `${team}: ${e.text}${e.by ? `\n— ${e.by} · ${fmtPlanTs(e.ts)}` : ''}`;
+  if (!e || (!e.text && !getPlanQty(code, team))) return `${team} 소진계획 입력`;
+  const q = getPlanQty(code, team);
+  return `${team}: ${q ? `소진 ${q.toLocaleString('ko-KR')}개` : ''}${q && e.text ? ' · ' : ''}${e.text || ''}${e.by ? `\n— ${e.by} · ${fmtPlanTs(e.ts)}` : ''}`;
 }
-function applyPlanLocal(code, team, text, by, ts) {
-  const t = String(text || '').slice(0, 100).trim();
-  if (t) { if (!plans[code]) plans[code] = {}; plans[code][team] = { text: t, by: by || '', ts: ts || Date.now() }; }
+function applyPlanLocal(code, team, text, by, ts, qty) {
+  const t = String(text || '').slice(0, 100).trim(), q = normQty(qty);
+  if (t || q) { if (!plans[code]) plans[code] = {}; plans[code][team] = { text: t, qty: q, by: by || '', ts: ts || Date.now() }; }
   else if (plans[code]) { delete plans[code][team]; if (!Object.keys(plans[code]).length) delete plans[code]; }
   lsSet(PLAN_CACHE_KEY, JSON.stringify(plans));
 }
-function setPlan(code, team, text) {
-  const t = String(text || '').slice(0, 100).trim();
-  if (t === getPlan(code, team)) return;                 // 변경 없음
-  applyPlanLocal(code, team, t, planNick(), Date.now());
+function setPlan(code, team, text, qty) {
+  const t = String(text || '').slice(0, 100).trim(), q = normQty(qty);
+  if (t === getPlan(code, team) && q === getPlanQty(code, team)) return;   // 변경 없음
+  applyPlanLocal(code, team, t, planNick(), Date.now(), q);
+  const queue = () => { planPending[`${code}|${team}`] = { text: t, qty: q }; lsSet(PLAN_PENDING_KEY, JSON.stringify(planPending)); };
   if (planSocket && planSocket.connected) {
-    planSocket.emit('plan:set', { code, team, text: t, by: planNick() }, res => {
-      if (!res || !res.ok) { planPending[`${code}|${team}`] = t; lsSet(PLAN_PENDING_KEY, JSON.stringify(planPending)); }
-    });
-  } else {
-    planPending[`${code}|${team}`] = t; lsSet(PLAN_PENDING_KEY, JSON.stringify(planPending));
-  }
+    planSocket.emit('plan:set', { code, team, text: t, qty: q, by: planNick() }, res => { if (!res || !res.ok) queue(); });
+  } else queue();
 }
 function flushPlanPending() {
   const keys = Object.keys(planPending);
   if (!keys.length || !planSocket || !planSocket.connected) return;
-  const list = keys.map(k => { const [code, team] = k.split('|'); return { code, team, text: planPending[k] }; });
+  const list = keys.map(k => { const [code, team] = k.split('|'); const v = normPending(planPending[k]); return { code, team, text: v.text, qty: v.qty }; });
   planSocket.emit('plan:merge', { items: list, by: planNick() }, res => {
     if (res && res.ok) { planPending = {}; lsDel(PLAN_PENDING_KEY); }
   });
@@ -2177,16 +2207,16 @@ window.addEventListener('iconix:socket', e => {
   planSocket.on('plans', all => {
     plans = (all && typeof all === 'object') ? all : {};
     // 서버 반영 전 대기분은 화면에 유지
-    Object.entries(planPending).forEach(([k, text]) => { const [code, team] = k.split('|'); applyPlanLocal(code, team, text, planNick(), Date.now()); });
+    Object.entries(planPending).forEach(([k, v]) => { const [code, team] = k.split('|'); const n = normPending(v); applyPlanLocal(code, team, n.text, planNick(), Date.now(), n.qty); });
     lsSet(PLAN_CACHE_KEY, JSON.stringify(plans));
     rerenderPlans(); updatePlanMeta();
     flushPlanPending();
   });
   planSocket.on('plan', p => {
     if (!p || !p.code || !p.team) return;
-    applyPlanLocal(p.code, p.team, p.text, p.by, p.ts);
+    applyPlanLocal(p.code, p.team, p.text, p.by, p.ts, p.qty);
     refreshPlanButtons(p.code, p.team);
-    if (state.sortKey === 'plan') rerenderPlans();
+    if (state.sortKey === 'plan' || state.sortKey === 'remain') rerenderPlans();
     if (planEdit.code === p.code && planEdit.team === p.team) updatePlanMeta();
   });
   if (planSocket.connected) flushPlanPending();
@@ -2194,29 +2224,34 @@ window.addEventListener('iconix:socket', e => {
 
 function csvCell(v) { const s = String(v || '').replace(/[\r\n]+/g, ' '); return `"${s.replace(/"/g, '""')}"`; }
 function renderPlanButtons(it) {
-  return `<div class="plan-group">${PLAN_TEAMS.map(t => {
-    const v = getPlan(it.code, t);
-    return `<button type="button" class="plan-btn${v ? ' has' : ''}" data-code="${it.code}" data-team="${t}" title="${escapeHtml(planTitle(it.code, t))}">${t}</button>`;
-  }).join('')}</div>`;
+  return `<div class="plan-group">${PLAN_TEAMS.map(t =>
+    `<button type="button" class="plan-btn${hasPlan(it.code, t) ? ' has' : ''}" data-code="${it.code}" data-team="${t}" title="${escapeHtml(planTitle(it.code, t))}">${t}</button>`
+  ).join('')}</div>`;
+}
+function renderRemainCell(it) {
+  const used = planQtySum(it.code), r = remainQty(it);
+  return `<span class="remain-val${r < 0 ? ' neg' : ''}">${r.toLocaleString('ko-KR')}</span>${used ? `<small class="remain-sub">소진 ${used.toLocaleString('ko-KR')}</small>` : ''}`;
 }
 const planEdit = { code: null, team: null, btn: null };
 function refreshPlanButtons(code, team) {
   document.querySelectorAll(`.plan-btn[data-code="${code}"][data-team="${team}"]`).forEach(b => {
-    b.classList.toggle('has', !!getPlan(code, team));
+    b.classList.toggle('has', hasPlan(code, team));
     b.title = planTitle(code, team);
   });
+  const it = state.rawItems.find(x => x.code === code);
+  if (it) document.querySelectorAll(`td.remain-cell[data-code="${code}"]`).forEach(td => { td.innerHTML = renderRemainCell(it); });
 }
 function updatePlanMeta() {
   const el = document.getElementById('planPopMeta');
   if (!el || !planEdit.code) return;
   const e = planEntry(planEdit.code, planEdit.team);
   const online = planSocket && planSocket.connected;
-  el.textContent = (e && e.text && e.by ? `최종 작성 ${e.by} · ${fmtPlanTs(e.ts)}` : '') + (online ? '' : (e && e.by ? ' · ' : '') + '서버 미연결 — 연결되면 공유됩니다');
+  el.textContent = (e && (e.text || e.qty) && e.by ? `최종 작성 ${e.by} · ${fmtPlanTs(e.ts)}` : '') + (online ? '' : (e && e.by ? ' · ' : '') + '서버 미연결 — 연결되면 공유됩니다');
 }
 function savePlanAndClose() {
   const pop = document.getElementById('planPop');
   if (!pop.classList.contains('open') || !planEdit.code) return;
-  setPlan(planEdit.code, planEdit.team, document.getElementById('planPopText').value);
+  setPlan(planEdit.code, planEdit.team, document.getElementById('planPopText').value, document.getElementById('planPopQty').value);
   refreshPlanButtons(planEdit.code, planEdit.team);
   if (planEdit.btn) planEdit.btn.classList.remove('editing');
   pop.classList.remove('open');
@@ -2233,13 +2268,27 @@ function openPlanPopup(btn) {
   const ta = document.getElementById('planPopText');
   ta.value = getPlan(code, team);
   document.getElementById('planPopCount').textContent = `${ta.value.length} / 100`;
+  const qi = document.getElementById('planPopQty');
+  const q = getPlanQty(code, team);
+  qi.value = q ? q : '';
+  updatePlanQtyHint();
   updatePlanMeta();
   placeBelow(document.getElementById('planPop'), btn, true);
-  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  qi.focus(); qi.select();
+}
+function updatePlanQtyHint() {
+  const el = document.getElementById('planPopQtyHint');
+  if (!el || !planEdit.code) return;
+  const it = state.rawItems.find(x => x.code === planEdit.code);
+  if (!it) { el.textContent = ''; return; }
+  const others = PLAN_TEAMS.filter(t => t !== planEdit.team).reduce((s, t) => s + getPlanQty(planEdit.code, t), 0);
+  const mine = normQty(document.getElementById('planPopQty').value);
+  const r = Math.round(it.qtySales) - others - mine;
+  el.innerHTML = `영업본부 수량 ${Math.round(it.qtySales).toLocaleString('ko-KR')}개${others ? ` · 다른 팀 소진 ${others.toLocaleString('ko-KR')}개` : ''} → 예상 잔여 <b class="${r < 0 ? 'neg' : ''}">${r.toLocaleString('ko-KR')}개</b>`;
 }
 
 /* 소진계획 팀별 일괄삭제 */
-function planTeamCount(team) { return Object.values(plans).filter(t => t && t[team] && t[team].text).length; }
+function planTeamCount(team) { return Object.values(plans).filter(t => t && t[team] && (t[team].text || Number(t[team].qty) > 0)).length; }
 function openPlanBulk() {
   const pop = document.getElementById('planBulkPop'), btn = document.getElementById('btnPlanBulk');
   pop.querySelectorAll('input[data-team]').forEach(c => { c.checked = false; });
@@ -2312,6 +2361,8 @@ function bindEvents() {
   document.getElementById('planPopClose').addEventListener('click', savePlanAndClose);
   document.getElementById('planPopSave').addEventListener('click', savePlanAndClose);
   document.getElementById('planPopText').addEventListener('input', e => { document.getElementById('planPopCount').textContent = `${e.target.value.length} / 100`; });
+  document.getElementById('planPopQty').addEventListener('input', updatePlanQtyHint);
+  document.getElementById('planPopQty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('planPopText').focus(); } });
   document.addEventListener('pointerdown', e => {
     const pp = document.getElementById('planPop');
     if (pp.classList.contains('open') && !pp.contains(e.target) && !e.target.closest('.plan-btn')) savePlanAndClose();
